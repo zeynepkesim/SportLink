@@ -1,10 +1,10 @@
-package com.rating.ratingmanagement;
+package com.sportlink.rating;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class RatingmanagementApplicationTests {
+class RatingApplicationTests {
 
 	@Test
 	void contextLoads() {

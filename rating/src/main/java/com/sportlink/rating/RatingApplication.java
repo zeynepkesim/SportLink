@@ -1,13 +1,13 @@
-package com.rating.ratingmanagement;
+package com.sportlink.rating;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class RatingmanagementApplication {
+public class RatingApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(RatingmanagementApplication.class, args);
+		SpringApplication.run(RatingApplication.class, args);
 	}
 
 }
