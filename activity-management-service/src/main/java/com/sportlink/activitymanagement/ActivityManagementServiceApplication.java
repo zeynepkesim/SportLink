@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class ActivityManagementServiceApplication {
 
 	public static void main(String[] args) {
+		DatabaseInitializer.initialize("activity_management_db");
 		SpringApplication.run(ActivityManagementServiceApplication.class, args);
 	}
 
