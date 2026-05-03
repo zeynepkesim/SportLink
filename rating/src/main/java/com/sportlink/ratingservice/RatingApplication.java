@@ -1,4 +1,4 @@
-package com.sportlink.rating;
+package com.sportlink.ratingservice;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
