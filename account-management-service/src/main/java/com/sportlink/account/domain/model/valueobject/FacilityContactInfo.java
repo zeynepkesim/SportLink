@@ -14,10 +14,10 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class FacilityContactInfo {
 
-    @Column(name = "contactName")
+    @Column(name = "contact_name")
     private String contactName;
 
-    @Column(name = "contactPhone")
+    @Column(name = "contact_phone")
     private String contactPhone;
 
     @Column(name = "email", unique = true, nullable = false)

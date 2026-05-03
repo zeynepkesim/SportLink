@@ -14,9 +14,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class UserLabel {
 
-    @Column(name = "behaviorLabel")
+    @Column(name = "behavior_label")
     private String behaviorLabel;
 
-    @Column(name = "labelValue")
+    @Column(name = "label_value")
     private String labelValue;
 }
