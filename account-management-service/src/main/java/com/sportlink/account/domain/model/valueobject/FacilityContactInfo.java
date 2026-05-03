@@ -1,0 +1,28 @@
+package com.sportlink.account.domain.model.valueobject;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Embeddable
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class FacilityContactInfo {
+
+    @Column(name = "contactName")
+    private String contactName;
+
+    @Column(name = "contactPhone")
+    private String contactPhone;
+
+    @Column(name = "email", unique = true, nullable = false)
+    private String email;
+
+    @Column(name = "website")
+    private String website;
+}
