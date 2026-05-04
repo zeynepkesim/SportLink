@@ -1,4 +1,4 @@
-package com.sportlink.rating;
+package com.sportlink.ratingservice;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
