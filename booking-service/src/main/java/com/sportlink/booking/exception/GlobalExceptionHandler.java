@@ -7,11 +7,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-/**
- * Centralized exception handler. Translates domain exceptions into HTTP
- * responses with a simple {"message": "..."} JSON body, matching the style
- * used by the other SportLink microservices.
- */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 

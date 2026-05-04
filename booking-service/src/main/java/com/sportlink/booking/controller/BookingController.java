@@ -28,20 +28,17 @@ public class BookingController {
 
     private final BookingService bookingService;
 
-    // ---- POST /api/bookings -----------------------------------------------
     @PostMapping("/bookings")
     @ResponseStatus(HttpStatus.CREATED)
     public BookingDto createBooking(@RequestBody CreateBookingRequest request) {
         return bookingService.createBooking(request);
     }
 
-    // ---- GET /api/bookings/{bookingId} ------------------------------------
     @GetMapping("/bookings/{bookingId}")
     public BookingDto getBooking(@PathVariable String bookingId) {
         return bookingService.getBooking(bookingId);
     }
 
-    // ---- GET /api/bookings (filter by activityId, sportCenterId, status) -
     @GetMapping("/bookings")
     public List<BookingDto> listBookings(
             @RequestParam(required = false) String activityId,
@@ -50,25 +47,21 @@ public class BookingController {
         return bookingService.listBookings(activityId, sportCenterId, bookingStatus);
     }
 
-    // ---- PUT /api/bookings/{bookingId}/confirm ----------------------------
     @PutMapping("/bookings/{bookingId}/confirm")
     public BookingDto confirmBooking(@PathVariable String bookingId) {
         return bookingService.confirmBooking(bookingId);
     }
 
-    // ---- PUT /api/bookings/{bookingId}/cancel -----------------------------
     @PutMapping("/bookings/{bookingId}/cancel")
     public BookingDto cancelBooking(@PathVariable String bookingId) {
         return bookingService.cancelBooking(bookingId);
     }
 
-    // ---- POST /api/bookings/{bookingId}/refund ----------------------------
     @PostMapping("/bookings/{bookingId}/refund")
     public BookingDto refundBooking(@PathVariable String bookingId) {
         return bookingService.refundBooking(bookingId);
     }
 
-    // ---- GET /api/bookings/facilities/search ------------------------------
     @GetMapping("/bookings/facilities/search")
     public List<FacilityDto> searchFacilities(
             @RequestParam(required = false) String sportType,

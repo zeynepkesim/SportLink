@@ -14,9 +14,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Synchronous client for the Search Service. Encapsulates WebClient usage
- * so {@link com.sportlink.booking.service.BookingService} stays
- * unaware of Spring's web layer - making it trivial to mock in unit tests.
+ * Synchronous client for the Search Service. 
  */
 @Component
 @RequiredArgsConstructor
@@ -30,8 +28,6 @@ public class SearchClient {
 
     /**
      * Search bookable facilities matching the optional filters.
-     * Throws {@link SearchServiceException} if the Search Service is
-     * unreachable or returns a non-success status.
      */
     public List<FacilityDto> searchFacilities(String sportType, String location, String timeSlotId) {
         StringBuilder url = new StringBuilder(searchServiceUrl)

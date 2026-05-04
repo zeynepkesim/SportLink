@@ -32,22 +32,15 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class BookingService {
 
-    // Constructor-injected via Lombok @RequiredArgsConstructor.
-    // This matches the ActivityService(ar, pr, amc) pattern used by the
-    // other SportLink services.
     private final BookingRepository bookingRepository;
     private final SchedulingClient schedulingClient;
     private final SearchClient searchClient;
 
-    // ----------------------------------------------------------------------
-    // POST /api/bookings - Create a new booking
-    // ----------------------------------------------------------------------
     public BookingDto createBooking(CreateBookingRequest request) {
-        // 1. Reserve the time slot via Scheduling Service.
+        // Reserve the time slot via Scheduling Service.
         //    Throws SchedulingServiceException -> 503 if unreachable.
         schedulingClient.reserveTimeSlot(request.getSportCenterId(), request.getTimeSlotId());
 
-        // 2. Build the embedded Money + Payment + Booking aggregate.
         PaymentRequestDto pr = request.getPayment();
         Money money = Money.builder()
                 .amount(pr != null ? pr.getAmount() : null)
@@ -78,9 +71,6 @@ public class BookingService {
         return mapToBookingDto(booking);
     }
 
-    // ----------------------------------------------------------------------
-    // GET /api/bookings/{bookingId} - Retrieve a single booking
-    // ----------------------------------------------------------------------
     public BookingDto getBooking(String bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new BookingNotFoundException(
@@ -88,9 +78,6 @@ public class BookingService {
         return mapToBookingDto(booking);
     }
 
-    // ----------------------------------------------------------------------
-    // GET /api/bookings - List bookings filtered by query params
-    // ----------------------------------------------------------------------
     public List<BookingDto> listBookings(String activityId, String sportCenterId, BookingStatus bookingStatus) {
         List<Booking> bookings;
 
@@ -121,9 +108,6 @@ public class BookingService {
         return bookings.stream().map(this::mapToBookingDto).toList();
     }
 
-    // ----------------------------------------------------------------------
-    // PUT /api/bookings/{bookingId}/confirm - Confirm a pending booking
-    // ----------------------------------------------------------------------
     public BookingDto confirmBooking(String bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new BookingNotFoundException(
@@ -146,9 +130,6 @@ public class BookingService {
         return mapToBookingDto(booking);
     }
 
-    // ----------------------------------------------------------------------
-    // PUT /api/bookings/{bookingId}/cancel - Cancel a booking
-    // ----------------------------------------------------------------------
     public BookingDto cancelBooking(String bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new BookingNotFoundException(
@@ -170,9 +151,6 @@ public class BookingService {
         return mapToBookingDto(booking);
     }
 
-    // ----------------------------------------------------------------------
-    // POST /api/bookings/{bookingId}/refund - Refund a cancelled booking
-    // ----------------------------------------------------------------------
     public BookingDto refundBooking(String bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new BookingNotFoundException(
@@ -197,16 +175,10 @@ public class BookingService {
         return mapToBookingDto(booking);
     }
 
-    // ----------------------------------------------------------------------
-    // GET /api/bookings/facilities/search - Search bookable facilities
-    // ----------------------------------------------------------------------
     public List<FacilityDto> searchFacilities(String sportType, String location, String timeSlotId) {
         return searchClient.searchFacilities(sportType, location, timeSlotId);
     }
 
-    // ----------------------------------------------------------------------
-    // Mapping helpers
-    // ----------------------------------------------------------------------
     private BookingDto mapToBookingDto(Booking booking) {
         return BookingDto.builder()
                 .bookingId(booking.getBookingId())

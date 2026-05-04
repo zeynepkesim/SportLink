@@ -10,10 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Synchronous client for the Scheduling Service. Encapsulates WebClient
- * usage so that {@link com.sportlink.booking.service.BookingService}
- * doesn't depend directly on Spring's web layer - making it trivial to mock
- * in unit tests.
+ * Synchronous client for the Scheduling Service. 
  */
 @Component
 @RequiredArgsConstructor
@@ -27,8 +24,6 @@ public class SchedulingClient {
 
     /**
      * Reserves the given time slot for the supplied facility.
-     * Throws {@link SchedulingServiceException} if the Scheduling Service
-     * is unreachable or returns a non-success status.
      */
     public void reserveTimeSlot(String facilityId, String timeSlotId) {
         try {
@@ -50,8 +45,6 @@ public class SchedulingClient {
 
     /**
      * Releases a previously-reserved time slot.
-     * Throws {@link SchedulingServiceException} if the Scheduling Service
-     * is unreachable or returns a non-success status.
      */
     public void releaseTimeSlot(String timeSlotId) {
         try {
