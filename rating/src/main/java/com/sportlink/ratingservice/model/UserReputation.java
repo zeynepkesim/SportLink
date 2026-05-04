@@ -3,6 +3,8 @@ package com.sportlink.ratingservice.model;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import com.sportlink.ratingservice.dto.UserReputationResponse;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -35,4 +37,14 @@ public class UserReputation {
 
     @Column(name = "last_updated_at")
     private LocalDateTime lastUpdatedAt;
+
+    public UserReputationResponse toResponse() {
+        return UserReputationResponse.builder()
+                .userId(this.userId)
+                .averageScore(this.averageScore)
+                .userLabel(this.userLabel)
+                .totalRatings(this.totalRatings)
+                .lastUpdatedAt(this.lastUpdatedAt)
+                .build();
+    }
 }

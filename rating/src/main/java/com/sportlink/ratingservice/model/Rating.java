@@ -3,6 +3,8 @@ package com.sportlink.ratingservice.model;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import com.sportlink.ratingservice.dto.RatingResponse;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -57,5 +59,19 @@ public class Rating {
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
+    }
+
+    public RatingResponse toResponse() {
+        return RatingResponse.builder()
+                .ratingId(this.ratingId)
+                .reviewerId(this.reviewerId)
+                .revieweeId(this.revieweeId)
+                .activityId(this.activityId)
+                .behaviorValue(this.behaviorValue)
+                .behaviorLabel(this.behaviorLabel)
+                .skillValue(this.skillValue)
+                .skillLabel(this.skillLabel)
+                .createdAt(this.createdAt)
+                .build();
     }
 }

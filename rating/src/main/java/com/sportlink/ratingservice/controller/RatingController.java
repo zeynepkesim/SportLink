@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.sportlink.ratingservice.dto.RatingRequest;
+import com.sportlink.ratingservice.dto.RatingResponse;
+import com.sportlink.ratingservice.dto.UserReputationResponse;
 import com.sportlink.ratingservice.model.Rating;
 import com.sportlink.ratingservice.model.UserReputation;
 import com.sportlink.ratingservice.service.RatingService;
@@ -33,23 +35,24 @@ public class RatingController {
 
     @Operation(summary = "Submit a new rating", description = "Validates participation via ActivityManagement stub, prevents duplicates")
     @PostMapping("/ratings")
-    public ResponseEntity<Rating> submitRating(@RequestBody RatingRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(ratingService.submitRating(request));
+    public ResponseEntity<RatingResponse> submitRating(@RequestBody RatingRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ratingService.submitRating(request).toResponse());
     }
 
     @Operation(summary = "Get a rating by ID")
     @GetMapping("/ratings/{ratingId}")
-    public ResponseEntity<Rating> getRating(@PathVariable UUID ratingId) {
-        return ResponseEntity.ok(ratingService.getRatingById(ratingId));
+    public ResponseEntity<RatingResponse> getRating(@PathVariable UUID ratingId) {
+        return ResponseEntity.ok(ratingService.getRatingById(ratingId).toResponse());
     }
 
     @Operation(summary = "List ratings", description = "Filter by reviewerId, revieweeId, or activityId")
     @GetMapping("/ratings")
-    public ResponseEntity<List<Rating>> listRatings(
+    public ResponseEntity<List<RatingResponse>> listRatings(
             @RequestParam(required = false) UUID reviewerId,
             @RequestParam(required = false) UUID revieweeId,
             @RequestParam(required = false) UUID activityId) {
-        return ResponseEntity.ok(ratingService.getRatings(reviewerId, revieweeId, activityId));
+        return ResponseEntity.ok(ratingService.getRatings(reviewerId, revieweeId, activityId)
+                .stream().map(Rating::toResponse).toList());
     }
 
     @Operation(summary = "Delete a rating")
@@ -61,13 +64,13 @@ public class RatingController {
 
     @Operation(summary = "Get aggregated reputation for a user")
     @GetMapping("/reputations/{userId}")
-    public ResponseEntity<UserReputation> getReputation(@PathVariable UUID userId) {
-        return ResponseEntity.ok(ratingService.getReputation(userId));
+    public ResponseEntity<UserReputationResponse> getReputation(@PathVariable UUID userId) {
+        return ResponseEntity.ok(ratingService.getReputation(userId).toResponse());
     }
 
     @Operation(summary = "Recompute reputation from all ratings")
     @PostMapping("/reputations/{userId}/recompute")
-    public ResponseEntity<UserReputation> recompute(@PathVariable UUID userId) {
-        return ResponseEntity.ok(ratingService.recomputeReputation(userId));
+    public ResponseEntity<UserReputationResponse> recompute(@PathVariable UUID userId) {
+        return ResponseEntity.ok(ratingService.recomputeReputation(userId).toResponse());
     }
 }
