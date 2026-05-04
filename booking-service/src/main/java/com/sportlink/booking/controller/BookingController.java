@@ -1,11 +1,8 @@
 package com.sportlink.booking.controller;
 
 import java.util.List;
-import java.util.Optional;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,35 +10,38 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+
 import com.sportlink.booking.dto.BookingDto;
 import com.sportlink.booking.dto.CreateBookingRequest;
 import com.sportlink.booking.dto.FacilityDto;
 import com.sportlink.booking.model.BookingStatus;
 import com.sportlink.booking.service.BookingService;
 
+import lombok.RequiredArgsConstructor;
+
 @RestController
 @RequestMapping("/api")
+@RequiredArgsConstructor
 public class BookingController {
 
-    @Autowired
-    private BookingService bookingService;
+    private final BookingService bookingService;
 
+    // ---- POST /api/bookings -----------------------------------------------
     @PostMapping("/bookings")
-    public ResponseEntity<BookingDto> createBooking(@RequestBody CreateBookingRequest request) {
-        BookingDto created = bookingService.createBooking(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    @ResponseStatus(HttpStatus.CREATED)
+    public BookingDto createBooking(@RequestBody CreateBookingRequest request) {
+        return bookingService.createBooking(request);
     }
 
+    // ---- GET /api/bookings/{bookingId} ------------------------------------
     @GetMapping("/bookings/{bookingId}")
-    public ResponseEntity<BookingDto> getBooking(@PathVariable String bookingId) {
-        Optional<BookingDto> booking = bookingService.getBooking(bookingId);
-        return booking.map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public BookingDto getBooking(@PathVariable String bookingId) {
+        return bookingService.getBooking(bookingId);
     }
 
     // ---- GET /api/bookings (filter by activityId, sportCenterId, status) -
-    // NOTE: this mapping must come AFTER /bookings/facilities/search
     @GetMapping("/bookings")
     public List<BookingDto> listBookings(
             @RequestParam(required = false) String activityId,
@@ -50,21 +50,25 @@ public class BookingController {
         return bookingService.listBookings(activityId, sportCenterId, bookingStatus);
     }
 
+    // ---- PUT /api/bookings/{bookingId}/confirm ----------------------------
     @PutMapping("/bookings/{bookingId}/confirm")
     public BookingDto confirmBooking(@PathVariable String bookingId) {
         return bookingService.confirmBooking(bookingId);
     }
 
+    // ---- PUT /api/bookings/{bookingId}/cancel -----------------------------
     @PutMapping("/bookings/{bookingId}/cancel")
     public BookingDto cancelBooking(@PathVariable String bookingId) {
         return bookingService.cancelBooking(bookingId);
     }
 
+    // ---- POST /api/bookings/{bookingId}/refund ----------------------------
     @PostMapping("/bookings/{bookingId}/refund")
     public BookingDto refundBooking(@PathVariable String bookingId) {
         return bookingService.refundBooking(bookingId);
     }
 
+    // ---- GET /api/bookings/facilities/search ------------------------------
     @GetMapping("/bookings/facilities/search")
     public List<FacilityDto> searchFacilities(
             @RequestParam(required = false) String sportType,
