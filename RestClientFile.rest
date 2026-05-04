@@ -1,0 +1,143 @@
+######################################
+# product-service — CRUD (direct port 8082)
+######################################
+
+### Get all products
+GET http://localhost:8082/api/products
+
+###
+
+### Get product by id
+GET http://localhost:8082/api/products/1
+
+###
+
+### Create a new product
+POST http://localhost:8082/api/products
+Content-Type: application/json
+
+{
+  "productCode": "SPORT-003",
+  "name": "Tennis Racket",
+  "description": "Professional tennis racket",
+  "price": 89.99
+}
+
+###
+
+### Update product by id
+PUT http://localhost:8082/api/products/1
+Content-Type: application/json
+
+{
+  "productCode": "SPORT-001",
+  "name": "Football Pro",
+  "description": "Updated professional football",
+  "price": 34.99
+}
+
+###
+
+### Delete product by id
+DELETE http://localhost:8082/api/products/3
+
+######################################
+# product-service — with quantity (direct port 8082)
+######################################
+
+###
+
+### Get product with quantity (original — calls inventory via WebClient)
+GET http://localhost:8082/api/productquantity/1
+
+###
+
+### Get product with quantity — NO resilience (throws raw exception when inventory is down)
+GET http://localhost:8082/api/products/quantity/1
+
+######################################
+# Resilience4j — Circuit Breaker
+# - inventory-service UP   → returns real quantity
+# - inventory-service DOWN → returns fallback object immediately (after circuit trips)
+# Check CB state: GET http://localhost:8082/actuator/health
+# CLOSED=normal  OPEN=tripped  HALF_OPEN=recovering
+# Trips OPEN after >= 50% failures in a 5-call window
+# Returns to HALF_OPEN after 5 s, then CLOSED after 3 successful calls
+######################################
+
+###
+
+### Get product with quantity — Circuit Breaker (port 8082)
+GET http://localhost:8082/api/products/quantityCB/1
+
+### Get product with quantity — Circuit Breaker via API Gateway (port 8080)
+GET http://localhost:8080/api/products/quantityCB/1
+
+### Check Circuit Breaker health
+GET http://localhost:8082/actuator/health
+
+######################################
+# Resilience4j — Time Limiter
+# inventory-service sleeps 8 s; TimeLimiter fires after 3 s → fallback
+# Both inventory UP and DOWN will trigger the fallback (due to the 8s sleep)
+######################################
+
+###
+
+### Get product with quantity — Time Limiter
+GET http://localhost:8082/api/products/quantityTL/1
+
+######################################
+# Resilience4j — Retry
+# Retries up to 3 times with 5 s between attempts when inventory is down
+# Watch product-service terminal to see each "Retry attempt" log line
+######################################
+
+###
+
+### Get product with quantity — Retry
+GET http://localhost:8082/api/products/quantityRetry/1
+
+######################################
+# Resilience4j — Rate Limiter
+# Max 2 requests per 5-second window
+# Send 3+ times quickly → 3rd request gets fallback ("rate limit exceeded")
+######################################
+
+###
+
+### Get product with quantity — Rate Limiter (send this 3+ times quickly)
+GET http://localhost:8082/api/products/quantityRL/1
+
+######################################
+# inventory-service — direct (port 8083)
+######################################
+
+###
+
+### Get inventory by product code
+GET http://localhost:8083/api/inventory/SPORT-001
+
+###
+
+### Get inventory - second product
+GET http://localhost:8083/api/inventory/SPORT-002
+
+######################################
+# API Gateway (port 8080) — all traffic routed through here
+######################################
+
+###
+
+### Get all products - via API Gateway
+GET http://localhost:8080/api/products
+
+###
+
+### Get inventory by product code - via API Gateway
+GET http://localhost:8080/api/inventory/SPORT-001
+
+###
+
+### Eureka dashboard via API Gateway
+GET http://localhost:8080/eureka/web
