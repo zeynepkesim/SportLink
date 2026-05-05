@@ -17,18 +17,27 @@ Microservices-based platform for sports matchmaking, activity organization, and 
 ```
 sportlink-project/
 ├── account-management-service/     # Zeynep — registration, login, profile management
+├── activity-management-service/    # Kirill
+├── booking-service/                # Olena
+├── rating-management-service/      # Kateryna
 ├── docker-compose.yml              # Local dev orchestration (PostgreSQL + services)
-├── .gitlab-ci.yml                  # CI: build + tests + SAST + secret detection
+├── .gitlab-ci.yml                  # CI: per-service build jobs + SAST + secret detection
 └── README.md
 ```
 
-Other services will be added by their owners as the project progresses.
+Each service is autonomous, has its own database, and is deployed independently. Additional services are added by their owners as work progresses.
 
-## Account Management Service
+## Account Management Service (Zeynep)
 
-Responsible for user and sport center registration, authentication, profile reads/updates, and account status changes. Built with Spring Boot 3, Java 17, PostgreSQL, JPA.
+Central identity provider of the platform. Responsible for:
+- User registration and authentication
+- Sport center (facility) registration and authentication
+- Profile reads and updates
+- Account status changes (ACTIVE / SUSPENDED / BANNED), called by the Moderation Service
 
-### Endpoints
+Built with Spring Boot 3, Java 17, PostgreSQL 15, Spring Data JPA, BCrypt password hashing, and springdoc-openapi for Swagger UI.
+
+### Endpoints (8 total, matching Assignment 3)
 
 | Method | Path | Description |
 |---|---|---|
@@ -42,6 +51,25 @@ Responsible for user and sport center registration, authentication, profile read
 | PUT | `/api/sport-centers/{id}` | Update facility profile |
 
 Swagger UI: http://localhost:8081/swagger-ui/index.html
+
+### Architecture Layers
+
+```
+controller/   — REST API (Spring MVC, validation via @Valid)
+dto/          — request/response DTOs (decouples API from domain model)
+service/      — business logic (UserService, SportCenterService, AuthService)
+repository/   — persistence (Spring Data JPA)
+model/        — domain entities (UserProfile, FacilityProfile) + value objects + enums
+exception/    — domain exceptions + GlobalExceptionHandler
+config/       — beans (PasswordEncoder, OpenAPI metadata)
+```
+
+### Sample Data
+
+On startup, `DatabaseInitializer` seeds the database with two demo users and one demo facility (only when the database is empty), so that GET endpoints can be demonstrated without a prior POST:
+- `demo@sportlink.test` / `demoPassword1` (USER, INTERMEDIATE skill, Tartu)
+- `organizer@sportlink.test` / `organizerPass1` (ORGANIZER, ADVANCED skill, Tallinn)
+- `info@tartusportshall.test` / `facilityPass1` (Tartu Sports Hall, badminton/basketball/volleyball)
 
 ### Run with Docker (recommended)
 
@@ -61,12 +89,12 @@ docker compose logs -f account-service
 Stop:
 ```bash
 docker compose down          # keep data
-docker compose down -v       # also remove volume
+docker compose down -v       # also remove the volume
 ```
 
 ### Run locally (without Docker)
 
-Prerequisites: Java 17, Maven 3.9+, PostgreSQL 15 running on `localhost:5434` with database `account_service_db` (user/password `postgres`).
+Prerequisites: Java 17 (or 21), Maven 3.9+, PostgreSQL 15 running on `localhost:5434` with database `account_service_db` (user/password `postgres`).
 
 ```bash
 cd account-management-service
@@ -80,9 +108,21 @@ cd account-management-service
 mvn test
 ```
 
+`UserControllerTest` uses `@WebMvcTest` and `@MockBean` to isolate the controller from its dependency (`UserService`). It covers a happy-path test (POST `/api/users` → 201 with the expected response body) and an error-case test (GET `/api/users/{id}` when the user is missing → 404 with the structured error response).
+
 ## CI / CD
 
 GitLab CI runs on every push:
 - `account-service:build` — Maven build + unit tests (only when `account-management-service/**` changes)
 - `sast` — static security analysis
 - `secret_detection` — credential leak detection
+
+## AI Use Declaration
+
+During the development of this project, AI-assisted tools were used in the following ways:
+
+- **Problem Solving:** For debugging complex issues and exploring solutions.
+
+- **Documentation drafting and language polishing:** Drafting and refining the wording of this README, commit messages, and inline explanations; checking grammar, sentence structure, and terminology consistency in English-language documentation.
+
+All AI-assisted output was reviewed, modified, and validated before being committed. Architectural decisions, API contracts, and the implementation responsibilities defined in Assignment 3 were authored by the team.
