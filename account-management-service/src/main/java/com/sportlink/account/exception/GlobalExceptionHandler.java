@@ -1,6 +1,6 @@
 package com.sportlink.account.exception;
 
-import com.sportlink.account.application.dto.response.ErrorResponse;
+import com.sportlink.account.dto.response.ErrorResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
