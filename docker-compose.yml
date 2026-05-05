@@ -1,0 +1,45 @@
+services:
+  account-db:
+    image: postgres:15
+    container_name: sportlink-account-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: account_service_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - account-db-data:/var/lib/postgresql/data
+    networks:
+      - sportlink-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d account_service_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  account-service:
+    build:
+      context: ./account-management-service
+      dockerfile: Dockerfile
+    container_name: sportlink-account-service
+    restart: unless-stopped
+    depends_on:
+      account-db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://account-db:5432/account_service_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+    ports:
+      - "8081:8081"
+    networks:
+      - sportlink-network
+
+volumes:
+  account-db-data:
+
+networks:
+  sportlink-network:
+    driver: bridge

@@ -1,93 +1,128 @@
-# Sportlink Project
+# SportLink
 
+Microservices-based platform for sports matchmaking, activity organization, and facility booking. Course project for *Enterprise System Integration* (University of Tartu, 2026).
 
+## Team
 
-## Getting started
+| Member | Service 1 | Service 2 / Component |
+|---|---|---|
+| Olena Ushenko | Booking Service | Search Service + RabbitMQ (shared) |
+| Kateryna Manoilova | Matching Service | Rating Management Service |
+| Zeynep Kesim | Account Management Service | Moderation Service + Resilience4j (shared) |
+| Kirill Ryrmak | Activity Management Service | Scheduling Service |
+| Muhammad Ahmed Khan | Interaction Service | Notification Service |
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-* [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+## Repository Layout
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.cs.ut.ee/group-11-ESI/sportlink-project.git
-git branch -M main
-git push -uf origin main
+sportlink-project/
+├── account-management-service/     # Zeynep — registration, login, profile management
+├── activity-management-service/    # Kirill
+├── booking-service/                # Olena
+├── rating-management-service/      # Kateryna
+├── docker-compose.yml              # Local dev orchestration (PostgreSQL + services)
+├── .gitlab-ci.yml                  # CI: per-service build jobs + SAST + secret detection
+└── README.md
 ```
 
-## Integrate with your tools
+Each service is autonomous, has its own database, and is deployed independently. Additional services are added by their owners as work progresses.
 
-* [Set up project integrations](https://gitlab.cs.ut.ee/group-11-ESI/sportlink-project/-/settings/integrations)
+## Account Management Service (Zeynep)
 
-## Collaborate with your team
+Central identity provider of the platform. Responsible for:
+- User registration and authentication
+- Sport center (facility) registration and authentication
+- Profile reads and updates
+- Account status changes (ACTIVE / SUSPENDED / BANNED), called by the Moderation Service
 
-* [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+Built with Spring Boot 3, Java 17, PostgreSQL 15, Spring Data JPA, BCrypt password hashing, and springdoc-openapi for Swagger UI.
 
-## Test and Deploy
+### Endpoints (8 total, matching Assignment 3)
 
-Use the built-in continuous integration in GitLab.
+| Method | Path | Description |
+|---|---|---|
+| POST | `/api/users` | Register a new user |
+| POST | `/api/auth/login` | Authenticate user or sport center |
+| GET | `/api/users/{id}` | Get user profile |
+| PUT | `/api/users/{id}` | Update user profile |
+| PUT | `/api/users/{id}/status` | Update user status (ACTIVE / SUSPENDED / BANNED) |
+| POST | `/api/sport-centers` | Register a new sport center |
+| GET | `/api/sport-centers/{id}` | Get facility profile |
+| PUT | `/api/sport-centers/{id}` | Update facility profile |
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+Swagger UI: http://localhost:8081/swagger-ui/index.html
 
-***
+### Architecture Layers
 
-# Editing this README
+```
+controller/   — REST API (Spring MVC, validation via @Valid)
+dto/          — request/response DTOs (decouples API from domain model)
+service/      — business logic (UserService, SportCenterService, AuthService)
+repository/   — persistence (Spring Data JPA)
+model/        — domain entities (UserProfile, FacilityProfile) + value objects + enums
+exception/    — domain exceptions + GlobalExceptionHandler
+config/       — beans (PasswordEncoder, OpenAPI metadata)
+```
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+### Sample Data
 
-## Suggestions for a good README
+On startup, `DatabaseInitializer` seeds the database with two demo users and one demo facility (only when the database is empty), so that GET endpoints can be demonstrated without a prior POST:
+- `demo@sportlink.test` / `demoPassword1` (USER, INTERMEDIATE skill, Tartu)
+- `organizer@sportlink.test` / `organizerPass1` (ORGANIZER, ADVANCED skill, Tallinn)
+- `info@tartusportshall.test` / `facilityPass1` (Tartu Sports Hall, badminton/basketball/volleyball)
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+### Run with Docker (recommended)
 
-## Name
-Choose a self-explaining name for your project.
+```bash
+docker compose up -d --build
+```
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+This starts:
+- PostgreSQL on `localhost:5434` (database `account_service_db`)
+- Account Management Service on `localhost:8081`
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+Logs:
+```bash
+docker compose logs -f account-service
+```
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+Stop:
+```bash
+docker compose down          # keep data
+docker compose down -v       # also remove the volume
+```
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+### Run locally (without Docker)
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+Prerequisites: Java 17 (or 21), Maven 3.9+, PostgreSQL 15 running on `localhost:5434` with database `account_service_db` (user/password `postgres`).
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+```bash
+cd account-management-service
+mvn clean spring-boot:run
+```
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+### Run tests
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+```bash
+cd account-management-service
+mvn test
+```
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+`UserControllerTest` uses `@WebMvcTest` and `@MockBean` to isolate the controller from its dependency (`UserService`). It covers a happy-path test (POST `/api/users` → 201 with the expected response body) and an error-case test (GET `/api/users/{id}` when the user is missing → 404 with the structured error response).
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+## CI / CD
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+GitLab CI runs on every push:
+- `account-service:build` — Maven build + unit tests (only when `account-management-service/**` changes)
+- `sast` — static security analysis
+- `secret_detection` — credential leak detection
 
-## License
-For open source projects, say how it is licensed.
+## AI Use Declaration
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+During the development of this project, AI-assisted tools were used in the following ways:
+
+- **Problem Solving:** For debugging complex issues and exploring solutions.
+
+- **Documentation drafting and language polishing:** Drafting and refining the wording of this README, commit messages, and inline explanations; checking grammar, sentence structure, and terminology consistency in English-language documentation.
+
+All AI-assisted output was reviewed, modified, and validated before being committed. Architectural decisions, API contracts, and the implementation responsibilities defined in Assignment 3 were authored by the team.
