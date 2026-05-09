@@ -101,18 +101,16 @@ public class SchedulingService {
                 .orElseThrow(() -> new TimeSlotNotFoundException(
                         "Time slot " + slotId + " not found"));
 
-        if (slot.getStatus() == TimeSlotStatus.RELEASED) {
-            return; // idempotent
-        }
+        
         if (slot.getStatus() == TimeSlotStatus.AVAILABLE) {
             throw new TimeSlotConflictException(
                     "Cannot release an AVAILABLE slot — only RESERVED slots can be released");
         }
 
-        slot.setStatus(TimeSlotStatus.RELEASED);
+        slot.setStatus(TimeSlotStatus.AVAILABLE);
         slot.setReservedForId(null); // free the logical reference
         timeSlotRepository.save(slot);
-        log.info("Released time slot {}", slotId);
+        log.info("Released time slot {} (now AVAILABLE)", slotId);
     }
 
     // ============================================================
