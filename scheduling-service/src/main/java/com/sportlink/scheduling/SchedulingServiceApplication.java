@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class SchedulingServiceApplication {
 
 	public static void main(String[] args) {
+		DatabaseInitializer.initialize("scheduling_db");
 		SpringApplication.run(SchedulingServiceApplication.class, args);
 	}
 
