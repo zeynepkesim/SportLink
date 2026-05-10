@@ -29,6 +29,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.web.bind.annotation.CrossOrigin;
+
 /**
  * REST endpoints for the Scheduling Service.
  * Endpoint set matches Assignment #3 § "Scheduling Service".
@@ -36,6 +38,9 @@ import lombok.RequiredArgsConstructor;
  * Per Project Guidelines § 3.2 — controllers expose endpoints, validate
  * input, and return responses; they hold no business logic.
  */
+
+
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/timeslots")
 @Tag(name = "Scheduling", description = "Time slots and availability windows")
