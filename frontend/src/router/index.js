@@ -1,19 +1,39 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
+
+import AllActivities from '../views/AllActivities.vue'
+import CreateActivity from '../views/CreateActivity.vue'
+import AvailableSlots from '../views/AvailableSlots.vue'
+import ReserveSlot from '../views/ReserveSlot.vue'
 
 const routes = [
   {
     path: '/',
-    name: 'home',
-    component: HomeView
+    redirect: '/activities'
   },
   {
-    path: '/about',
-    name: 'about',
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () => import(/* webpackChunkName: "about" */ '../views/AboutView.vue')
+    path: '/activities',
+    name: 'AllActivities',
+    component: AllActivities
+  },
+  {
+    path: '/activities/new',
+    name: 'CreateActivity',
+    component: CreateActivity
+  },
+  {
+    path: '/slots',
+    name: 'AvailableSlots',
+    component: AvailableSlots
+  },
+  {
+    path: '/slots/reserve',
+    name: 'ReserveSlot',
+    component: ReserveSlot
+  },
+  {
+    // fallback for unknown routes — redirect to activities
+    path: '/:catchAll(.*)',
+    redirect: '/activities'
   }
 ]
 

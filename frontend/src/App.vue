@@ -1,9 +1,19 @@
 <template>
-  <nav>
-    <router-link to="/">Home</router-link> |
-    <router-link to="/about">About</router-link>
-  </nav>
-  <router-view/>
+  <div id="app">
+    <header>
+      <h1>🏆 SportLink</h1>
+      <nav>
+        <router-link to="/activities">Activities</router-link> |
+        <router-link to="/activities/new">Create Activity</router-link> |
+        <router-link to="/slots">Available Slots</router-link> |
+        <router-link to="/slots/reserve">Reserve a Slot</router-link>
+      </nav>
+    </header>
+
+    <main>
+      <router-view />
+    </main>
+  </div>
 </template>
 
 <style>
@@ -13,15 +23,28 @@
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
   color: #2c3e50;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+header h1 {
+  color: #42b983;
+  margin-bottom: 10px;
 }
 
 nav {
-  padding: 30px;
+  padding: 20px;
+  background: #f4f4f4;
+  border-radius: 8px;
+  margin-bottom: 30px;
 }
 
 nav a {
   font-weight: bold;
   color: #2c3e50;
+  text-decoration: none;
+  margin: 0 5px;
 }
 
 nav a.router-link-exact-active {
