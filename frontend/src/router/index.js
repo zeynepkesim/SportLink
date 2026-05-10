@@ -1,9 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-import AllActivities from '../views/AllActivities.vue'
-import CreateActivity from '../views/CreateActivity.vue'
-import AvailableSlots from '../views/AvailableSlots.vue'
-import ReserveSlot from '../views/ReserveSlot.vue'
+import AllActivities from '../views/activities/AllActivities.vue'
+import CreateActivity from '../views/activities/CreateActivity.vue'
+import AvailableSlots from '../views/scheduling/AvailableSlots.vue'
+import ReserveSlot from '../views/scheduling/ReserveSlot.vue'
 
 const routes = [
   {
