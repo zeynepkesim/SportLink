@@ -32,3 +32,13 @@ account-service:build:
   rules:
     - changes:
         - account-management-service/**/*
+
+moderation-service:build:
+  stage: build
+  image: maven:3.9-eclipse-temurin-17
+  script:
+    - cd moderation-service
+    - mvn clean compile
+  rules:
+    - changes:
+        - moderation-service/**/*
