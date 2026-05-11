@@ -18,11 +18,14 @@ public class AccountManagementClient {
 
     private final WebClient.Builder webClientBuilder;
     private final boolean mock;
+    private final String accountServiceUrl;
 
     public AccountManagementClient(WebClient.Builder webClientBuilder,
-                                   @Value("${sportlink.mock.dependencies:true}") boolean mock) {
+                                   @Value("${sportlink.mock.dependencies:true}") boolean mock,
+                                   @Value("${sportlink.services.account-management.url:http://localhost:8081}") String accountServiceUrl) {
         this.webClientBuilder = webClientBuilder;
         this.mock = mock;
+        this.accountServiceUrl = accountServiceUrl;
     }
 
     
@@ -40,7 +43,7 @@ public class AccountManagementClient {
         try {
             return webClientBuilder.build()
                     .get()
-                    .uri("http://account-management-service/api/users/{id}", userId)
+                    .uri(accountServiceUrl + "/api/users/{id}", userId)
                     .retrieve()
                     .bodyToMono(UserDto.class)
                     .block();

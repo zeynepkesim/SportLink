@@ -27,6 +27,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.web.bind.annotation.CrossOrigin;
+
+
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/activities")
 @Tag(name = "Activities", description = "Activity lifecycle and participant management")
