@@ -2,6 +2,8 @@ package com.sportlink.moderation.client;
 
 import com.sportlink.moderation.client.dto.UpdateUserStatusBody;
 import com.sportlink.moderation.exception.AccountSyncException;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -16,8 +18,12 @@ import java.util.UUID;
 @Slf4j
 public class AccountManagementClient {
 
+    private static final String CB_INSTANCE = "accountManagement";
+
     private final WebClient accountManagementWebClient;
 
+    @CircuitBreaker(name = CB_INSTANCE, fallbackMethod = "updateUserStatusFallback")
+    @Retry(name = CB_INSTANCE)
     public void updateUserStatus(UUID userId, String status) {
         try {
             accountManagementWebClient
@@ -39,5 +45,14 @@ public class AccountManagementClient {
             throw new AccountSyncException(
                     "Account Management is unreachable: " + ex.getMessage(), ex);
         }
+    }
+
+    @SuppressWarnings("unused")
+    private void updateUserStatusFallback(UUID userId, String status, Throwable ex) {
+        log.error("Resilience4j fallback triggered for user {} (status={}): {}",
+                userId, status, ex.toString());
+        throw new AccountSyncException(
+                "Account Management is unavailable after retries and circuit-breaker fallback: "
+                        + ex.getMessage(), ex);
     }
 }

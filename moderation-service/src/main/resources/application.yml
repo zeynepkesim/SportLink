@@ -51,6 +51,7 @@ resilience4j:
         maxAttempts: 3
         waitDuration: 500ms
         retryExceptions:
+          - com.sportlink.moderation.exception.AccountSyncException
           - org.springframework.web.reactive.function.client.WebClientRequestException
           - java.io.IOException
   timelimiter:
