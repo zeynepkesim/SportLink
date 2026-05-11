@@ -33,6 +33,7 @@ public class ActivityService {
     private final ActivityRepository activityRepository;
     private final ParticipantRepository participantRepository;
     private final AccountManagementClient accountManagementClient;
+    private final com.sportlink.activitymanagement.client.SchedulingClient schedulingClient;
 
 
     @Transactional
@@ -62,6 +63,20 @@ public class ActivityService {
         activity.getParticipants().add(organizerAsParticipant);
 
         Activity saved = activityRepository.save(activity);
+        // If a time slot was requested, reserve it via Scheduling Service.
+        // if Scheduling is down, the activity is still created.
+        if (request.getPreferredTimeSlotId() != null) {
+            // Use the preferred slot ID as the start anchor; default 1-hour duration.
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            UUID reservedSlotId = schedulingClient.reserveSlot(
+                    now, now.plusHours(1),
+                    saved.getOrganizerId(), saved.getActivityId());
+            if (reservedSlotId != null) {
+                saved.setPreferredTimeSlotId(reservedSlotId);
+                activityRepository.save(saved);
+            }
+        }
+
         log.info("Activity {} created by organizer {}", saved.getActivityId(), saved.getOrganizerId());
         return toDto(saved);
     }
@@ -129,6 +144,10 @@ public class ActivityService {
 
         activity.setStatus(ActivityStatus.CANCELLED);
         activityRepository.save(activity);
+        // Release the reserved time slot in Scheduling Service.
+        if (activity.getPreferredTimeSlotId() != null) {
+            schedulingClient.releaseSlot(activity.getPreferredTimeSlotId());
+        }
         log.info("Activity {} cancelled", activityId);
     }
 

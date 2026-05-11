@@ -49,14 +49,18 @@ class ActivityControllerTest {
     @MockBean
     private AccountManagementClient accountManagementClient;
 
+    @MockBean
+    private com.sportlink.activitymanagement.client.SchedulingClient schedulingClient;
+
  
     @TestConfiguration
     static class TestConfig {
         @Bean
         ActivityService activityService(ActivityRepository ar,
                                         ParticipantRepository pr,
-                                        AccountManagementClient amc) {
-            return new ActivityService(ar, pr, amc);
+                                        AccountManagementClient amc,
+                                        com.sportlink.activitymanagement.client.SchedulingClient sc) {
+            return new ActivityService(ar, pr, amc, sc);
         }
     }
 
