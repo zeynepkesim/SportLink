@@ -6,7 +6,8 @@
         <router-link to="/activities">Activities</router-link> |
         <router-link to="/activities/new">Create Activity</router-link> |
         <router-link to="/slots">Available Slots</router-link> |
-        <router-link to="/slots/reserve">Reserve a Slot</router-link>
+        <router-link to="/slots/reserve">Reserve a Slot</router-link> |
+        <router-link to="/ratings">User Ratings</router-link>
       </nav>
     </header>
 
