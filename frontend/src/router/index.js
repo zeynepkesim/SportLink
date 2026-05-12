@@ -4,6 +4,8 @@ import AllActivities from '../views/activities/AllActivities.vue'
 import CreateActivity from '../views/activities/CreateActivity.vue'
 import AvailableSlots from '../views/scheduling/AvailableSlots.vue'
 import ReserveSlot from '../views/scheduling/ReserveSlot.vue'
+import InteractionDemo from '../views/interactions/InteractionDemo.vue'
+import AllUsers from '../views/accounts/AllUsers.vue'
 
 const routes = [
   {
@@ -29,6 +31,16 @@ const routes = [
     path: '/slots/reserve',
     name: 'ReserveSlot',
     component: ReserveSlot
+  },
+  {
+    path: '/interactions',
+    name: 'InteractionDemo',
+    component: InteractionDemo
+  },
+  {
+    path: '/users',
+    name: 'AllUsers',
+    component: AllUsers
   },
   {
     // fallback for unknown routes — redirect to activities

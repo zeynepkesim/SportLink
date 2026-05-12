@@ -17,6 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -59,6 +60,11 @@ public class UserService {
         UserProfile saved = userProfileRepository.save(user);
         log.info("User registered: {}", saved.getUserId());
         return toResponse(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserProfileResponse> getAllUsers() {
+        return userProfileRepository.findAll().stream().map(this::toResponse).toList();
     }
 
     @Transactional(readOnly = true)

@@ -3,20 +3,19 @@ package com.sportlink.account;
 import com.sportlink.account.model.FacilityProfile;
 import com.sportlink.account.model.UserProfile;
 import com.sportlink.account.model.enums.FacilityStatus;
-import com.sportlink.account.model.enums.SkillLevel;
-import com.sportlink.account.model.enums.UserRole;
-import com.sportlink.account.model.enums.UserStatus;
 import com.sportlink.account.model.valueobject.FacilityContactInfo;
 import com.sportlink.account.model.valueobject.FacilityLocation;
-import com.sportlink.account.model.valueobject.UserContactInfo;
-import com.sportlink.account.model.valueobject.UserLocation;
 import com.sportlink.account.repository.FacilityProfileRepository;
 import com.sportlink.account.repository.UserProfileRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -26,6 +25,7 @@ public class DatabaseInitializer implements CommandLineRunner {
     private final UserProfileRepository userProfileRepository;
     private final FacilityProfileRepository facilityProfileRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JdbcTemplate jdbc;
 
     @Override
     public void run(String... args) {
@@ -34,32 +34,27 @@ public class DatabaseInitializer implements CommandLineRunner {
             return;
         }
 
-        UserProfile demoUser = UserProfile.builder()
-                .name("Demo User")
-                .contactInfo(UserContactInfo.builder()
-                        .email("demo@sportlink.test")
-                        .phone("+372 555 0100")
-                        .build())
-                .passwordHash(passwordEncoder.encode("demoPassword1"))
-                .role(UserRole.USER)
-                .status(UserStatus.ACTIVE)
-                .skillLevel(SkillLevel.INTERMEDIATE)
-                .language("en")
-                .sportPreferences("badminton,tennis")
-                .location(UserLocation.builder().city("Tartu").district("Annelinn").build())
-                .build();
+        LocalDateTime now = LocalDateTime.now();
+        String insertUser = """
+                INSERT INTO user_profiles
+                (user_id, name, email, phone, password_hash, role, status, skill_level, language, sport_preferences, city, district, created_at, updated_at)
+                VALUES (?::uuid, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """;
 
-        UserProfile demoOrganizer = UserProfile.builder()
-                .name("Demo Organizer")
-                .contactInfo(UserContactInfo.builder()
-                        .email("organizer@sportlink.test")
-                        .build())
-                .passwordHash(passwordEncoder.encode("organizerPass1"))
-                .role(UserRole.ORGANIZER)
-                .status(UserStatus.ACTIVE)
-                .skillLevel(SkillLevel.ADVANCED)
-                .location(UserLocation.builder().city("Tallinn").build())
-                .build();
+        jdbc.update(insertUser,
+                "11111111-1111-1111-1111-111111111111", "Demo User", "demo@sportlink.test", "+372 555 0100",
+                passwordEncoder.encode("demoPassword1"), "USER", "ACTIVE", "INTERMEDIATE",
+                "en", "badminton,tennis", "Tartu", "Annelinn", now, now);
+
+        jdbc.update(insertUser,
+                "22222222-2222-2222-2222-222222222222", "Demo Organizer", "organizer@sportlink.test", null,
+                passwordEncoder.encode("organizerPass1"), "ORGANIZER", "ACTIVE", "ADVANCED",
+                null, null, "Tallinn", null, now, now);
+
+        jdbc.update(insertUser,
+                "33333333-3333-3333-3333-333333333333", "Demo Athlete", "athlete@sportlink.test", null,
+                passwordEncoder.encode("athletePass1"), "USER", "ACTIVE", "BEGINNER",
+                null, null, "Tartu", null, now, now);
 
         FacilityProfile demoFacility = FacilityProfile.builder()
                 .name("Tartu Sports Hall")
@@ -79,8 +74,6 @@ public class DatabaseInitializer implements CommandLineRunner {
                 .status(FacilityStatus.ACTIVE)
                 .build();
 
-        userProfileRepository.save(demoUser);
-        userProfileRepository.save(demoOrganizer);
         facilityProfileRepository.save(demoFacility);
 
         log.info("Seeded {} users and {} facilities",
