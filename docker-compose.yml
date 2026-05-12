@@ -37,8 +37,50 @@ services:
     networks:
       - sportlink-network
 
+  moderation-db:
+    image: postgres:15
+    container_name: sportlink-moderation-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: moderation_service_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5439:5432"
+    volumes:
+      - moderation-db-data:/var/lib/postgresql/data
+    networks:
+      - sportlink-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d moderation_service_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  moderation-service:
+    build:
+      context: ./moderation-service
+      dockerfile: Dockerfile
+    container_name: sportlink-moderation-service
+    restart: unless-stopped
+    depends_on:
+      moderation-db:
+        condition: service_healthy
+      account-service:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://moderation-db:5432/moderation_service_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      ACCOUNT_MANAGEMENT_BASE_URL: http://account-service:8081
+    ports:
+      - "8086:8086"
+    networks:
+      - sportlink-network
+
 volumes:
   account-db-data:
+  moderation-db-data:
 
 networks:
   sportlink-network:
