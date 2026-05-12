@@ -79,7 +79,7 @@ export default {
       this.error = null
       this.result = null
 
-      fetch('http://localhost:8086/api/sanctions', {
+      fetch('http://localhost:8090/api/sanctions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

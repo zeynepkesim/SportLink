@@ -81,7 +81,7 @@ export default {
       if (this.verdict) params.append('verdict', this.verdict)
       params.append('size', '20')
       params.append('sort', 'createdAt,desc')
-      fetch('http://localhost:8086/api/cases?' + params.toString())
+      fetch('http://localhost:8090/api/cases?' + params.toString())
         .then(response => {
           if (!response.ok) {
             throw new Error('Failed to fetch cases (HTTP ' + response.status + ')')
