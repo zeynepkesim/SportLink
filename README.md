@@ -133,7 +133,7 @@ Built with Spring Boot 3, Java 17, PostgreSQL 15, Spring Data JPA, Spring WebFlu
 | GET | `/api/sanctions/{userId}` | List sanction history for a user |
 | DELETE | `/api/content/{contentType}/{contentId}` | Delegate content removal to the owning service |
 
-Swagger UI: http://localhost:8086/swagger-ui/index.html
+Swagger UI: http://localhost:8090/swagger-ui/index.html
 
 ### Architecture Layers
 
@@ -190,7 +190,7 @@ docker compose up -d --build
 
 This starts:
 - Account Management DB on `localhost:5434`, service on `localhost:8081`
-- Moderation DB on `localhost:5439`, service on `localhost:8086`
+- Moderation DB on `localhost:5439`, service on `localhost:8090`
 
 The Moderation Service container reads `ACCOUNT_MANAGEMENT_BASE_URL=http://account-service:8081` so it can reach Account Management over the Docker network.
 
