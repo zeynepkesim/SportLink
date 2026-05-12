@@ -2,12 +2,6 @@
   <div class="form">
     <h2>Account Login</h2>
 
-    <p class="hint">
-      Authenticate against the Account Management Service. Seeded credentials:
-      <code>demo@sportlink.test / demoPassword1</code> or
-      <code>organizer@sportlink.test / organizerPass1</code>.
-    </p>
-
     <label>Email</label>
     <input v-model="email" type="email" placeholder="demo@sportlink.test" />
 
@@ -30,7 +24,6 @@
         <b>Account ID:</b> {{ result.accountId }}<br />
         <b>Token:</b> {{ result.token }}
       </small></p>
-      <p class="note">Token is a placeholder for Checkpoint 2; full JWT is delivered in Checkpoint 3.</p>
     </div>
   </div>
 </template>

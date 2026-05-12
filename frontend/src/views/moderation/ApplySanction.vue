@@ -2,13 +2,6 @@
   <div class="form">
     <h2>Apply Account Sanction</h2>
 
-    <p class="hint">
-      This page triggers <b>Moderation Service → Account Management Service</b> synchronous
-      integration. The call is wrapped with Resilience4j (retry + circuit breaker). When Account
-      Management is reachable, the user status is updated immediately. When it is unreachable,
-      the sanction is still persisted with <code>accountSyncStatus = PENDING_RETRY</code>.
-    </p>
-
     <label>Case ID (UUID)</label>
     <input v-model="caseId" placeholder="00000000-0000-0000-0000-000000000000" />
 
@@ -48,13 +41,6 @@
       </p>
       <p v-if="result.lastSyncError" class="sync-error">
         <b>Last sync error:</b> {{ result.lastSyncError }}
-      </p>
-      <p class="note" v-if="result.accountSyncStatus === 'SYNCED'">
-        Account Management updated the user's status synchronously.
-      </p>
-      <p class="note" v-else-if="result.accountSyncStatus === 'PENDING_RETRY'">
-        Account Management was unreachable. The sanction is persisted and waiting for retry —
-        Resilience4j circuit-breaker fallback prevented the failure from propagating.
       </p>
     </div>
   </div>
