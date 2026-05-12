@@ -8,6 +8,7 @@ import AccountLogin from '../views/account/Login.vue'
 import ModerationCases from '../views/moderation/Cases.vue'
 import ApplySanction from '../views/moderation/ApplySanction.vue'
 import UserRatings from '../views/ratings/UserRatings.vue'
+import FacilitySearch from '../views/search/FacilitySearch.vue'
 
 const routes = [
   {
@@ -53,6 +54,11 @@ const routes = [
     path: '/ratings',
     name: 'UserRatings',
     component: UserRatings
+  },
+  {
+    path: '/search/facilities',
+    name: 'FacilitySearch',
+    component: FacilitySearch
   },
   {
     // fallback for unknown routes — redirect to activities
