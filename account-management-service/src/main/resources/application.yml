@@ -33,6 +33,12 @@ springdoc:
     path: /swagger-ui.html
     operationsSorter: method
 
+sportlink:
+  jwt:
+    secret: ${SPORTLINK_JWT_SECRET:change-me-in-production-this-is-only-for-local-dev-256-bits-min}
+    expiration-minutes: ${SPORTLINK_JWT_EXPIRATION_MINUTES:720}
+    issuer: sportlink-account-management
+
 logging:
   level:
     com.sportlink.account: INFO
