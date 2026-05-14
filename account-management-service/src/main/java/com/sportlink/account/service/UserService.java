@@ -4,6 +4,9 @@ import com.sportlink.account.dto.request.RegisterUserRequest;
 import com.sportlink.account.dto.request.UpdateUserRequest;
 import com.sportlink.account.dto.request.UpdateUserStatusRequest;
 import com.sportlink.account.dto.response.UserProfileResponse;
+import com.sportlink.account.event.UserProfileUpdatedEvent;
+import com.sportlink.account.event.UserStatusUpdatedEvent;
+import com.sportlink.account.messaging.AccountEventPublisher;
 import com.sportlink.account.model.UserProfile;
 import com.sportlink.account.model.enums.UserRole;
 import com.sportlink.account.model.valueobject.UserContactInfo;
@@ -17,6 +20,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -26,6 +30,7 @@ public class UserService {
 
     private final UserProfileRepository userProfileRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AccountEventPublisher eventPublisher;
 
     @Transactional
     public UserProfileResponse registerUser(RegisterUserRequest request) {
@@ -106,6 +111,21 @@ public class UserService {
 
         UserProfile saved = userProfileRepository.save(user);
         log.info("User updated: {}", saved.getUserId());
+
+        UserContactInfo savedContact = saved.getContactInfo();
+        UserLocation savedLocation = saved.getLocation();
+        eventPublisher.publishUserProfileUpdated(UserProfileUpdatedEvent.builder()
+                .userId(saved.getUserId())
+                .name(saved.getName())
+                .email(savedContact != null ? savedContact.getEmail() : null)
+                .skillLevel(saved.getSkillLevel())
+                .language(saved.getLanguage())
+                .sportPreferences(saved.getSportPreferences())
+                .city(savedLocation != null ? savedLocation.getCity() : null)
+                .district(savedLocation != null ? savedLocation.getDistrict() : null)
+                .occurredAt(LocalDateTime.now())
+                .build());
+
         return toResponse(saved);
     }
 
@@ -116,6 +136,13 @@ public class UserService {
         user.setStatus(request.getStatus());
         UserProfile saved = userProfileRepository.save(user);
         log.info("User status changed: {} -> {}", saved.getUserId(), saved.getStatus());
+
+        eventPublisher.publishUserStatusUpdated(UserStatusUpdatedEvent.builder()
+                .userId(saved.getUserId())
+                .status(saved.getStatus())
+                .occurredAt(LocalDateTime.now())
+                .build());
+
         return toResponse(saved);
     }
 

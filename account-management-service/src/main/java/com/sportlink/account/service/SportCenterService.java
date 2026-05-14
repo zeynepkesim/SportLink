@@ -3,6 +3,8 @@ package com.sportlink.account.service;
 import com.sportlink.account.dto.request.RegisterFacilityRequest;
 import com.sportlink.account.dto.request.UpdateFacilityRequest;
 import com.sportlink.account.dto.response.FacilityProfileResponse;
+import com.sportlink.account.event.FacilityProfileUpdatedEvent;
+import com.sportlink.account.messaging.AccountEventPublisher;
 import com.sportlink.account.model.FacilityProfile;
 import com.sportlink.account.model.valueobject.FacilityContactInfo;
 import com.sportlink.account.model.valueobject.FacilityLocation;
@@ -15,6 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -24,6 +27,7 @@ public class SportCenterService {
 
     private final FacilityProfileRepository facilityProfileRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AccountEventPublisher eventPublisher;
 
     @Transactional
     public FacilityProfileResponse registerFacility(RegisterFacilityRequest request) {
@@ -102,6 +106,20 @@ public class SportCenterService {
 
         FacilityProfile saved = facilityProfileRepository.save(facility);
         log.info("Facility updated: {}", saved.getCenterId());
+
+        FacilityContactInfo savedContact = saved.getContactInfo();
+        FacilityLocation savedLocation = saved.getLocation();
+        eventPublisher.publishFacilityProfileUpdated(FacilityProfileUpdatedEvent.builder()
+                .centerId(saved.getCenterId())
+                .name(saved.getName())
+                .email(savedContact != null ? savedContact.getEmail() : null)
+                .sportTypes(saved.getSportTypes())
+                .city(savedLocation != null ? savedLocation.getCity() : null)
+                .district(savedLocation != null ? savedLocation.getDistrict() : null)
+                .status(saved.getStatus())
+                .occurredAt(LocalDateTime.now())
+                .build());
+
         return toResponse(saved);
     }
 

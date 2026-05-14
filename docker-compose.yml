@@ -1,4 +1,22 @@
 services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: sportlink-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: sportlink
+      RABBITMQ_DEFAULT_PASS: sportlink
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - sportlink-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   account-db:
     image: postgres:15
     container_name: sportlink-account-db
@@ -28,10 +46,16 @@ services:
     depends_on:
       account-db:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://account-db:5432/account_service_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: sportlink
+      SPRING_RABBITMQ_PASSWORD: sportlink
     ports:
       - "8081:8081"
     networks:
@@ -68,11 +92,17 @@ services:
         condition: service_healthy
       account-service:
         condition: service_started
+      rabbitmq:
+        condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://moderation-db:5432/moderation_service_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
       ACCOUNT_MANAGEMENT_BASE_URL: http://account-service:8081
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: sportlink
+      SPRING_RABBITMQ_PASSWORD: sportlink
     ports:
       - "8090:8090"
     networks:
