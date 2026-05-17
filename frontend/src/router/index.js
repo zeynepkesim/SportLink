@@ -10,6 +10,11 @@ import ApplySanction from '../views/moderation/ApplySanction.vue'
 import UserRatings from '../views/ratings/UserRatings.vue'
 import FacilitySearch from '../views/search/FacilitySearch.vue'
 
+// Booking Service views (covers all 7 endpoints of the booking service)
+import AllBookings from '../views/bookings/AllBookings.vue'
+import CreateBooking from '../views/bookings/CreateBooking.vue'
+import BookingFacilitySearch from '../views/bookings/BookingFacilitySearch.vue'
+
 const routes = [
   {
     path: '/',
@@ -59,6 +64,30 @@ const routes = [
     path: '/search/facilities',
     name: 'FacilitySearch',
     component: FacilitySearch
+  },
+  // -------------------------------------------------------------------
+  // Booking Service routes
+  //   /bookings                 -> list + filters + get-by-id +
+  //                               per-row confirm / cancel / refund actions
+  //                               (GET, PUT /confirm, PUT /cancel, POST /refund,
+  //                                GET /{id})
+  //   /bookings/new             -> POST /api/bookings
+  //   /bookings/facilities      -> GET /api/bookings/facilities/search
+  // -------------------------------------------------------------------
+  {
+    path: '/bookings',
+    name: 'AllBookings',
+    component: AllBookings
+  },
+  {
+    path: '/bookings/new',
+    name: 'CreateBooking',
+    component: CreateBooking
+  },
+  {
+    path: '/bookings/facilities',
+    name: 'BookingFacilitySearch',
+    component: BookingFacilitySearch
   },
   {
     // fallback for unknown routes — redirect to activities
