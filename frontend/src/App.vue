@@ -17,6 +17,10 @@
         <router-link to="/admin/ratings">Admin Ratings</router-link> |
         <router-link to="/matching/users">User Suggestions</router-link> |
         <router-link to="/search/facilities">Facility Search</router-link>
+        <router-link to="/search">All</router-link> |
+        <router-link to="/search/users">Users</router-link> |
+        <router-link to="/search/activities">Activities</router-link> |
+        <router-link to="/search/index">Index Maintenance</router-link>
       </nav>
     </header>
 
@@ -47,8 +51,21 @@ nav {
   padding: 20px;
   background: #f4f4f4;
   border-radius: 8px;
-  margin-bottom: 30px;
+  margin-bottom: 14px;
   line-height: 2;
+}
+
+nav.search-nav {
+  background: #eaf3ff;
+  border: 1px solid #d6e9ff;
+  margin-bottom: 30px;
+  padding: 12px 20px;
+}
+
+nav.search-nav .nav-label {
+  font-weight: bold;
+  color: #1f3a5f;
+  margin-right: 8px;
 }
 
 nav a {
@@ -60,5 +77,12 @@ nav a {
 
 nav a.router-link-exact-active {
   color: #42b983;
+}
+
+nav.search-nav a.router-link-exact-active {
+  color: #1f3a5f;
+  background: #d6e9ff;
+  padding: 2px 8px;
+  border-radius: 4px;
 }
 </style>
