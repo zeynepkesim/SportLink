@@ -16,6 +16,7 @@ import BookingFacilitySearch from '../views/bookings/BookingFacilitySearch.vue'
 import AdminRatings from '../views/ratings/AdminRatings.vue'
 import ActivityDetail from '../views/activities/ActivityDetail.vue'
 import UserAvailability from '../views/scheduling/UserAvailability.vue'
+import ResolveSlots from '../views/scheduling/ResolveSlots.vue'
 
 const routes = [
   {
@@ -51,6 +52,11 @@ const routes = [
     path: '/slots/availability',
     name: 'UserAvailability',
     component: UserAvailability
+  },
+  {
+    path: '/slots/resolve',
+    name: 'ResolveSlots',
+    component: ResolveSlots
   },
   {
     path: '/account/login',

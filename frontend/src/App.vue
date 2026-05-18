@@ -8,6 +8,7 @@
         <router-link to="/slots">Available Slots</router-link> |
         <router-link to="/slots/reserve">Reserve a Slot</router-link> |
         <router-link to="/slots/availability">User Availability</router-link> |
+        <router-link to="/slots/resolve">Find Common Time</router-link> |
         <router-link to="/bookings">Bookings</router-link> |
         <router-link to="/bookings/new">New Booking</router-link> |
         <router-link to="/bookings/facilities">Find Facility (Booking)</router-link> |
