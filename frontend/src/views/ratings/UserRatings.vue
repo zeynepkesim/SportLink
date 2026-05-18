@@ -28,7 +28,10 @@
           <span class="created-at">{{ formatDate(rating.createdAt) }}</span>
         </div>
         <div class="rating-row">
-          <strong>Reviewer:</strong> {{ rating.reviewerId }}
+          <strong>Reviewer:</strong> {{ rating.reviewerName || rating.reviewerId }}
+        </div>
+        <div class="rating-row">
+          <strong>Reviewee:</strong> {{ rating.revieweeName || rating.revieweeId }}
         </div>
         <div class="rating-row">
           <strong>Activity:</strong> {{ rating.activityId }}

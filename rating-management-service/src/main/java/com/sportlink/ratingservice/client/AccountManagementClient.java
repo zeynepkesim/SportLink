@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
@@ -45,5 +46,33 @@ public class AccountManagementClient {
             log.error("Failed to check if user {} exists: {}", userId, e.getMessage());
             return false;
         }
+    }
+
+    public String getUserName(UUID userId) {
+        if (mock) {
+            log.debug("Mock mode: returning placeholder name for user {}", userId);
+            return "Mock User";
+        }
+
+        try {
+            UserProfile profile = webClientBuilder.build()
+                    .get()
+                    .uri(accountManagementUrl + "/api/users/{id}", userId)
+                    .retrieve()
+                    .bodyToMono(UserProfile.class)
+                    .block();
+            return profile != null && profile.getName() != null ? profile.getName() : "Unknown user";
+        } catch (WebClientResponseException.NotFound e) {
+            return "Unknown user";
+        } catch (Exception e) {
+            log.error("Failed to load user {} profile: {}", userId, e.getMessage());
+            return "Unknown user";
+        }
+    }
+
+    @Data
+    private static class UserProfile {
+        private UUID userId;
+        private String name;
     }
 }
