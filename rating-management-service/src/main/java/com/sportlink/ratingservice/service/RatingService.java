@@ -5,9 +5,11 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 import com.sportlink.ratingservice.dto.RatingRequest;
+import com.sportlink.ratingservice.dto.ReputationUpdatedEvent;
 import com.sportlink.ratingservice.model.Rating;
 import com.sportlink.ratingservice.model.UserReputation;
 import com.sportlink.ratingservice.repository.RatingRepository;
@@ -21,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class RatingService {
 
+    private final KafkaTemplate<String, ReputationUpdatedEvent> kafkaTemplate;
     private final RatingRepository ratingRepository;
     private final UserReputationRepository reputationRepository;
     private final AccountManagementClient accountManagementClient;
@@ -104,6 +107,14 @@ public class RatingService {
         reputation.setTotalRatings(ratings.size());
         reputation.setLastUpdatedAt(LocalDateTime.now());
 
+        ReputationUpdatedEvent event = new ReputationUpdatedEvent(
+                reputation.getUserId(),
+                reputation.getAverageScore(),
+                reputation.getUserLabel(),
+                reputation.getTotalRatings()
+        );
+        kafkaTemplate.send("reputation-updated", userId.toString(), event);
+        
         return reputationRepository.save(reputation);
     }
 }
