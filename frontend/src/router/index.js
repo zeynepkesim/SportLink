@@ -9,6 +9,10 @@ import ModerationCases from '../views/moderation/Cases.vue'
 import ApplySanction from '../views/moderation/ApplySanction.vue'
 import UserRatings from '../views/ratings/UserRatings.vue'
 import FacilitySearch from '../views/search/FacilitySearch.vue'
+import CrossEntitySearch from '../views/search/CrossEntitySearch.vue'
+import UserSearch from '../views/search/UserSearch.vue'
+import ActivitySearch from '../views/search/ActivitySearch.vue'
+import IndexEntry from '../views/search/IndexEntry.vue'
 import AllBookings from '../views/bookings/AllBookings.vue'
 import CreateBooking from '../views/bookings/CreateBooking.vue'
 import BookingFacilitySearch from '../views/bookings/BookingFacilitySearch.vue'
@@ -58,11 +62,36 @@ const routes = [
     name: 'UserRatings',
     component: UserRatings
   },
+
+  // -----------------------------------------------------------------
+  // Search Service - one route per REST endpoint in the controller.
+  // -----------------------------------------------------------------
+  {
+    path: '/search',
+    name: 'CrossEntitySearch',
+    component: CrossEntitySearch
+  },
+  {
+    path: '/search/users',
+    name: 'UserSearch',
+    component: UserSearch
+  },
+  {
+    path: '/search/activities',
+    name: 'ActivitySearch',
+    component: ActivitySearch
+  },
   {
     path: '/search/facilities',
     name: 'FacilitySearch',
     component: FacilitySearch
   },
+  {
+    path: '/search/index',
+    name: 'IndexEntry',
+    component: IndexEntry
+  },
+
   {
     path: '/bookings',
     name: 'AllBookings',

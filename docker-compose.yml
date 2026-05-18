@@ -151,10 +151,53 @@ services:
     networks:
       - sportlink-network
 
+  search-db:
+    image: postgres:15
+    container_name: sportlink-search-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: searchservice_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5437:5432"
+    volumes:
+      - search-db-data:/var/lib/postgresql/data
+    networks:
+      - sportlink-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d searchservice_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  search-service:
+      build:
+        context: ./search-service
+        dockerfile: Dockerfile
+      container_name: sportlink-search-service
+      restart: unless-stopped
+      depends_on:
+        search-db:
+          condition: service_healthy
+        kafka:
+          condition: service_healthy
+      environment:
+        SPRING_DATASOURCE_URL: jdbc:postgresql://search-db:5432/searchservice_db
+        SPRING_DATASOURCE_USERNAME: postgres
+        SPRING_DATASOURCE_PASSWORD: postgres
+        SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+        SERVICES_BOOKING_URL: http://booking-service:8088
+      ports:
+        - "8086:8086"
+      networks:
+        - sportlink-network
+
 volumes:
   account-db-data:
   moderation-db-data:
   booking-db-data:
+  search-db-data:
 
 networks:
   sportlink-network:
