@@ -127,6 +127,93 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  activity-db:
+    image: postgres:15
+    container_name: sportlink-activity-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: activity_management_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5436:5432"
+    volumes:
+      - activity-db-data:/var/lib/postgresql/data
+    networks:
+      - sportlink-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d activity_management_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  activity-service:
+    build:
+      context: ./activity-management-service
+      dockerfile: Dockerfile
+    container_name: sportlink-activity-service
+    restart: unless-stopped
+    depends_on:
+      activity-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      account-service:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://activity-db:5432/activity_management_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPORTLINK_SERVICES_ACCOUNT_MANAGEMENT_URL: http://account-service:8081
+      SPORTLINK_SERVICES_SCHEDULING_URL: http://scheduling-service:8089
+      SPORTLINK_MOCK_DEPENDENCIES: "false"
+    ports:
+      - "8083:8083"
+    networks:
+      - sportlink-network
+
+  scheduling-db:
+    image: postgres:15
+    container_name: sportlink-scheduling-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: scheduling_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5437:5432"
+    volumes:
+      - scheduling-db-data:/var/lib/postgresql/data
+    networks:
+      - sportlink-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d scheduling_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  scheduling-service:
+    build:
+      context: ./scheduling-service
+      dockerfile: Dockerfile
+    container_name: sportlink-scheduling-service
+    restart: unless-stopped
+    depends_on:
+      scheduling-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://scheduling-db:5432/scheduling_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    ports:
+      - "8089:8089"
+    networks:
+      - sportlink-network
   
   booking-service:
     build:
@@ -246,6 +333,8 @@ volumes:
   account-db-data:
   moderation-db-data:
   booking-db-data:
+  activity-db-data:
+  scheduling-db-data:
   rating-db-data:
   matching-db-data:
 
