@@ -70,7 +70,7 @@ public class BookingService {
         log.info("Booking {} created with status PENDING", booking.getBookingId());
 
         // Publish BookingCreated event asynchronously (Kafka).
-        // Consumed by: Notification (assignment table - WF 1).
+        // Consumed by: Notification
         eventPublisher.publishBookingCreated(booking);
 
         return mapToBookingDto(booking);
@@ -132,7 +132,7 @@ public class BookingService {
         log.info("Booking {} confirmed and payment marked as PAID", bookingId);
 
         // Publish BookingConfirmed event asynchronously (Kafka).
-        // Consumed by: Notification, Search, Scheduling (assignment table - WF 3).
+        // Consumed by: Notification, Search, Scheduling 
         eventPublisher.publishBookingConfirmed(booking);
 
         return mapToBookingDto(booking);
@@ -156,7 +156,7 @@ public class BookingService {
         log.info("Booking {} cancelled", bookingId);
 
         // Publish BookingCancelled event asynchronously (Kafka).
-        // Consumed by: Search (assignment table - WF 4).
+        // Consumed by: Search 
         eventPublisher.publishBookingCancelled(booking);
 
         return mapToBookingDto(booking);
@@ -183,7 +183,7 @@ public class BookingService {
         log.info("Booking {} refunded", bookingId);
 
         // Publish PaymentRefunded event asynchronously (Kafka).
-        // Consumed by: Notification (assignment table - WF 4).
+        // Consumed by: Notification 
         eventPublisher.publishPaymentRefunded(booking);
 
         return mapToBookingDto(booking);

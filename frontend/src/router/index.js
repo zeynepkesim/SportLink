@@ -9,8 +9,6 @@ import ModerationCases from '../views/moderation/Cases.vue'
 import ApplySanction from '../views/moderation/ApplySanction.vue'
 import UserRatings from '../views/ratings/UserRatings.vue'
 import FacilitySearch from '../views/search/FacilitySearch.vue'
-
-// Booking Service views (covers all 7 endpoints of the booking service)
 import AllBookings from '../views/bookings/AllBookings.vue'
 import CreateBooking from '../views/bookings/CreateBooking.vue'
 import BookingFacilitySearch from '../views/bookings/BookingFacilitySearch.vue'
@@ -65,15 +63,6 @@ const routes = [
     name: 'FacilitySearch',
     component: FacilitySearch
   },
-  // -------------------------------------------------------------------
-  // Booking Service routes
-  //   /bookings                 -> list + filters + get-by-id +
-  //                               per-row confirm / cancel / refund actions
-  //                               (GET, PUT /confirm, PUT /cancel, POST /refund,
-  //                                GET /{id})
-  //   /bookings/new             -> POST /api/bookings
-  //   /bookings/facilities      -> GET /api/bookings/facilities/search
-  // -------------------------------------------------------------------
   {
     path: '/bookings',
     name: 'AllBookings',

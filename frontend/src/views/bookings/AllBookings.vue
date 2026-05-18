@@ -1,10 +1,6 @@
 <template>
   <div class="bookings">
     <h2>Bookings</h2>
-
-    <!-- ============================================
-         FILTERS (GET /api/bookings + GET /api/bookings/{id})
-         ============================================ -->
     <form class="filters" @submit.prevent="fetchBookings">
       <div class="row">
         <label>
