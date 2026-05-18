@@ -15,6 +15,7 @@ import CreateBooking from '../views/bookings/CreateBooking.vue'
 import BookingFacilitySearch from '../views/bookings/BookingFacilitySearch.vue'
 import AdminRatings from '../views/ratings/AdminRatings.vue'
 import ActivityDetail from '../views/activities/ActivityDetail.vue'
+import UserAvailability from '../views/scheduling/UserAvailability.vue'
 
 const routes = [
   {
@@ -45,6 +46,11 @@ const routes = [
     path: '/slots/reserve',
     name: 'ReserveSlot',
     component: ReserveSlot
+  },
+  {
+    path: '/slots/availability',
+    name: 'UserAvailability',
+    component: UserAvailability
   },
   {
     path: '/account/login',
