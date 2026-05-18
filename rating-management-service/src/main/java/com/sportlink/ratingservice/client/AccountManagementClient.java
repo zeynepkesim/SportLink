@@ -15,11 +15,14 @@ public class AccountManagementClient {
 
     private final WebClient.Builder webClientBuilder;
     private final boolean mock;
+    private final String accountManagementUrl;
 
     public AccountManagementClient(WebClient.Builder webClientBuilder,
-                                   @Value("${sportlink.mock.dependencies:true}") boolean mock) {
+                                   @Value("${sportlink.mock.dependencies:true}") boolean mock,
+                                   @Value("${sportlink.services.account-management.url:http://localhost:8081}") String accountManagementUrl) {
         this.webClientBuilder = webClientBuilder;
         this.mock = mock;
+        this.accountManagementUrl = accountManagementUrl;
     }
 
     public boolean userExists(UUID userId) {
@@ -31,7 +34,7 @@ public class AccountManagementClient {
         try {
             webClientBuilder.build()
                     .get()
-                    .uri("http://localhost:8081/api/users/{id}", userId) // change to docker service name
+                    .uri(accountManagementUrl + "/api/users/{id}", userId)
                     .retrieve()
                     .bodyToMono(Void.class)
                     .block();
