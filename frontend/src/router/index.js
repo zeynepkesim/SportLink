@@ -9,6 +9,7 @@ import ModerationCases from '../views/moderation/Cases.vue'
 import ApplySanction from '../views/moderation/ApplySanction.vue'
 import UserRatings from '../views/ratings/UserRatings.vue'
 import FacilitySearch from '../views/search/FacilitySearch.vue'
+import UserSuggestion from '../views/matching/UserSuggestion.vue'
 import AllBookings from '../views/bookings/AllBookings.vue'
 import CreateBooking from '../views/bookings/CreateBooking.vue'
 import BookingFacilitySearch from '../views/bookings/BookingFacilitySearch.vue'
@@ -58,6 +59,11 @@ const routes = [
     path: '/ratings/:userId?',
     name: 'UserRatings',
     component: UserRatings
+  },
+  {
+    path: '/matching/users',
+    name: 'UserSuggestion',
+    component: UserSuggestion
   },
   {
     path: '/admin/ratings',

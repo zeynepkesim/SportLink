@@ -195,11 +195,59 @@ services:
     networks:
       - sportlink-network
 
+  matching-db:
+    image: postgres:15
+    container_name: sportlink-matching-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sportlink_matching
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5436:5432"
+    volumes:
+      - matching-db-data:/var/lib/postgresql/data
+    networks:
+      - sportlink-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sportlink_matching"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  matching-service:
+    build:
+      context: ./matching-service
+      dockerfile: Dockerfile
+    container_name: sportlink-matching-service
+    restart: unless-stopped
+    depends_on:
+      matching-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://matching-db:5432/sportlink_matching
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPORTLINK_MOCK_ACCOUNT_MANAGEMENT: false
+      SPORTLINK_MOCK_SEARCH: true
+      SPORTLINK_MOCK_SCHEDULING: true
+      SPORTLINK_SERVICES_ACCOUNT_MANAGEMENT_URL: http://account-service:8081
+      SPORTLINK_SERVICES_SEARCH_URL: http://search-service:8084
+      SPORTLINK_SERVICES_SCHEDULING_URL: http://scheduling-service:8085
+    ports:
+      - "8087:8087"
+    networks:
+      - sportlink-network
+
 volumes:
   account-db-data:
   moderation-db-data:
   booking-db-data:
   rating-db-data:
+  matching-db-data:
 
 networks:
   sportlink-network:
