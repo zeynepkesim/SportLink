@@ -12,6 +12,7 @@ import FacilitySearch from '../views/search/FacilitySearch.vue'
 import AllBookings from '../views/bookings/AllBookings.vue'
 import CreateBooking from '../views/bookings/CreateBooking.vue'
 import BookingFacilitySearch from '../views/bookings/BookingFacilitySearch.vue'
+import AdminRatings from '../views/ratings/AdminRatings.vue'
 
 const routes = [
   {
@@ -54,9 +55,14 @@ const routes = [
     component: ApplySanction
   },
   {
-    path: '/ratings',
+    path: '/ratings/:userId?',
     name: 'UserRatings',
     component: UserRatings
+  },
+  {
+    path: '/admin/ratings',
+    name: 'AdminRatings',
+    component: AdminRatings
   },
   {
     path: '/search/facilities',
