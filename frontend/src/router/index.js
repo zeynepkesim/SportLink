@@ -18,6 +18,9 @@ import AllBookings from '../views/bookings/AllBookings.vue'
 import CreateBooking from '../views/bookings/CreateBooking.vue'
 import BookingFacilitySearch from '../views/bookings/BookingFacilitySearch.vue'
 import AdminRatings from '../views/ratings/AdminRatings.vue'
+import ActivityDetail from '../views/activities/ActivityDetail.vue'
+import UserAvailability from '../views/scheduling/UserAvailability.vue'
+import ResolveSlots from '../views/scheduling/ResolveSlots.vue'
 
 const routes = [
   {
@@ -35,6 +38,11 @@ const routes = [
     component: CreateActivity
   },
   {
+    path: '/activities/:id',
+    name: 'ActivityDetail',
+    component: ActivityDetail
+  },
+  {
     path: '/slots',
     name: 'AvailableSlots',
     component: AvailableSlots
@@ -43,6 +51,16 @@ const routes = [
     path: '/slots/reserve',
     name: 'ReserveSlot',
     component: ReserveSlot
+  },
+  {
+    path: '/slots/availability',
+    name: 'UserAvailability',
+    component: UserAvailability
+  },
+  {
+    path: '/slots/resolve',
+    name: 'ResolveSlots',
+    component: ResolveSlots
   },
   {
     path: '/account/login',
