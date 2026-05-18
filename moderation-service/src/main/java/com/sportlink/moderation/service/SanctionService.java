@@ -3,7 +3,8 @@ package com.sportlink.moderation.service;
 import com.sportlink.moderation.client.AccountManagementClient;
 import com.sportlink.moderation.dto.request.ApplySanctionRequest;
 import com.sportlink.moderation.dto.response.AccountSanctionResponse;
-import com.sportlink.moderation.event.UserRestrictedEvent;
+import com.sportlink.moderation.event.ModerationEvent;
+import com.sportlink.moderation.event.ModerationEventType;
 import com.sportlink.moderation.exception.AccountSyncException;
 import com.sportlink.moderation.messaging.ModerationEventPublisher;
 import com.sportlink.moderation.model.AccountSanction;
@@ -55,11 +56,12 @@ public class SanctionService {
         log.info("Sanction {} created for user {} (sync status: {})",
                 saved.getSanctionId(), saved.getTargetUserId(), saved.getAccountSyncStatus());
 
-        eventPublisher.publishUserRestricted(UserRestrictedEvent.builder()
+        eventPublisher.publishUserRestricted(ModerationEvent.builder()
+                .eventType(ModerationEventType.USER_RESTRICTED)
                 .sanctionId(saved.getSanctionId())
                 .caseId(saved.getCaseId())
                 .targetUserId(saved.getTargetUserId())
-                .sanctionType(saved.getSanctionType())
+                .sanctionType(saved.getSanctionType() != null ? saved.getSanctionType().name() : null)
                 .occurredAt(LocalDateTime.now())
                 .build());
 

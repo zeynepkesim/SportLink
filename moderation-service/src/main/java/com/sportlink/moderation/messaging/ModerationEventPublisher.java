@@ -1,31 +1,60 @@
 package com.sportlink.moderation.messaging;
 
-import com.sportlink.moderation.config.RabbitMQConfig;
-import com.sportlink.moderation.event.UserRestrictedEvent;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.AmqpException;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import java.util.concurrent.CompletableFuture;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
 
+import com.sportlink.moderation.event.ModerationEvent;
+import com.sportlink.moderation.event.ModerationEventType;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+/**
+ * Fire-and-forget: SanctionService persists the sanction first, then publishes.
+ * A failed send is logged but never rolls back the HTTP response.
+ */
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class ModerationEventPublisher {
 
-    private final RabbitTemplate rabbitTemplate;
+    private final KafkaTemplate<String, ModerationEvent> kafkaTemplate;
 
-    public void publishUserRestricted(UserRestrictedEvent event) {
-        try {
-            rabbitTemplate.convertAndSend(
-                    RabbitMQConfig.MODERATION_EVENTS_EXCHANGE,
-                    RabbitMQConfig.ROUTING_USER_RESTRICTED,
-                    event);
-            log.info("Published UserRestricted for user {} (sanction {})",
-                    event.getTargetUserId(), event.getSanctionId());
-        } catch (AmqpException ex) {
-            log.warn("Failed to publish UserRestricted for user {}: {}",
-                    event.getTargetUserId(), ex.getMessage());
-        }
+    @Value("${sportlink.kafka.topics.moderation-events}")
+    private String moderationEventsTopic;
+
+    public void publishUserRestricted(ModerationEvent event) {
+        publish(event);
+    }
+
+    private void publish(ModerationEvent event) {
+        // Same eventType always lands on the same partition, so per-type
+        // ordering is preserved without funnelling the whole topic to one.
+        String key = event.getEventType() != null
+                ? event.getEventType().name()
+                : ModerationEventType.USER_RESTRICTED.name();
+
+        CompletableFuture<SendResult<String, ModerationEvent>> future =
+                kafkaTemplate.send(moderationEventsTopic, key, event);
+
+        future.whenComplete((result, ex) -> {
+            if (ex != null) {
+                log.error("Failed to publish {} event for sanction {} (user {}): {}",
+                        event.getEventType(), event.getSanctionId(),
+                        event.getTargetUserId(), ex.getMessage(), ex);
+            } else {
+                log.info("Published {} event for sanction {} (user {}) to topic '{}' partition {} offset {}",
+                        event.getEventType(),
+                        event.getSanctionId(),
+                        event.getTargetUserId(),
+                        result.getRecordMetadata().topic(),
+                        result.getRecordMetadata().partition(),
+                        result.getRecordMetadata().offset());
+            }
+        });
     }
 }

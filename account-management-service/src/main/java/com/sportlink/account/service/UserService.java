@@ -4,8 +4,8 @@ import com.sportlink.account.dto.request.RegisterUserRequest;
 import com.sportlink.account.dto.request.UpdateUserRequest;
 import com.sportlink.account.dto.request.UpdateUserStatusRequest;
 import com.sportlink.account.dto.response.UserProfileResponse;
-import com.sportlink.account.event.UserProfileUpdatedEvent;
-import com.sportlink.account.event.UserStatusUpdatedEvent;
+import com.sportlink.account.event.AccountEvent;
+import com.sportlink.account.event.AccountEventType;
 import com.sportlink.account.messaging.AccountEventPublisher;
 import com.sportlink.account.model.UserProfile;
 import com.sportlink.account.model.enums.UserRole;
@@ -114,11 +114,12 @@ public class UserService {
 
         UserContactInfo savedContact = saved.getContactInfo();
         UserLocation savedLocation = saved.getLocation();
-        eventPublisher.publishUserProfileUpdated(UserProfileUpdatedEvent.builder()
-                .userId(saved.getUserId())
+        eventPublisher.publishUserProfileUpdated(AccountEvent.builder()
+                .eventType(AccountEventType.USER_PROFILE_UPDATED)
+                .aggregateId(saved.getUserId())
                 .name(saved.getName())
                 .email(savedContact != null ? savedContact.getEmail() : null)
-                .skillLevel(saved.getSkillLevel())
+                .skillLevel(saved.getSkillLevel() != null ? saved.getSkillLevel().name() : null)
                 .language(saved.getLanguage())
                 .sportPreferences(saved.getSportPreferences())
                 .city(savedLocation != null ? savedLocation.getCity() : null)
@@ -137,9 +138,10 @@ public class UserService {
         UserProfile saved = userProfileRepository.save(user);
         log.info("User status changed: {} -> {}", saved.getUserId(), saved.getStatus());
 
-        eventPublisher.publishUserStatusUpdated(UserStatusUpdatedEvent.builder()
-                .userId(saved.getUserId())
-                .status(saved.getStatus())
+        eventPublisher.publishUserStatusUpdated(AccountEvent.builder()
+                .eventType(AccountEventType.USER_STATUS_UPDATED)
+                .aggregateId(saved.getUserId())
+                .userStatus(saved.getStatus() != null ? saved.getStatus().name() : null)
                 .occurredAt(LocalDateTime.now())
                 .build());
 

@@ -3,7 +3,8 @@ package com.sportlink.account.service;
 import com.sportlink.account.dto.request.RegisterFacilityRequest;
 import com.sportlink.account.dto.request.UpdateFacilityRequest;
 import com.sportlink.account.dto.response.FacilityProfileResponse;
-import com.sportlink.account.event.FacilityProfileUpdatedEvent;
+import com.sportlink.account.event.AccountEvent;
+import com.sportlink.account.event.AccountEventType;
 import com.sportlink.account.messaging.AccountEventPublisher;
 import com.sportlink.account.model.FacilityProfile;
 import com.sportlink.account.model.valueobject.FacilityContactInfo;
@@ -109,14 +110,15 @@ public class SportCenterService {
 
         FacilityContactInfo savedContact = saved.getContactInfo();
         FacilityLocation savedLocation = saved.getLocation();
-        eventPublisher.publishFacilityProfileUpdated(FacilityProfileUpdatedEvent.builder()
-                .centerId(saved.getCenterId())
+        eventPublisher.publishFacilityProfileUpdated(AccountEvent.builder()
+                .eventType(AccountEventType.FACILITY_PROFILE_UPDATED)
+                .aggregateId(saved.getCenterId())
                 .name(saved.getName())
                 .email(savedContact != null ? savedContact.getEmail() : null)
-                .sportTypes(saved.getSportTypes())
+                .sportPreferences(saved.getSportTypes())
                 .city(savedLocation != null ? savedLocation.getCity() : null)
                 .district(savedLocation != null ? savedLocation.getDistrict() : null)
-                .status(saved.getStatus())
+                .facilityStatus(saved.getStatus() != null ? saved.getStatus().name() : null)
                 .occurredAt(LocalDateTime.now())
                 .build());
 

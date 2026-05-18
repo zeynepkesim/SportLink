@@ -20,11 +20,17 @@ spring:
         format_sql: true
     show-sql: false
 
-  rabbitmq:
-    host: ${SPRING_RABBITMQ_HOST:localhost}
-    port: ${SPRING_RABBITMQ_PORT:5672}
-    username: ${SPRING_RABBITMQ_USERNAME:sportlink}
-    password: ${SPRING_RABBITMQ_PASSWORD:sportlink}
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      properties:
+        # Don't write Java class names into Kafka headers so consumers in
+        # other services aren't forced to mirror our package layout.
+        spring.json.add.type.headers: false
 
 springdoc:
   api-docs:
@@ -38,6 +44,9 @@ sportlink:
     secret: ${SPORTLINK_JWT_SECRET:change-me-in-production-this-is-only-for-local-dev-256-bits-min}
     expiration-minutes: ${SPORTLINK_JWT_EXPIRATION_MINUTES:720}
     issuer: sportlink-account-management
+  kafka:
+    topics:
+      account-events: account-events
 
 logging:
   level:
