@@ -14,6 +14,8 @@
         <router-link to="/moderation/cases">Cases</router-link> |
         <router-link to="/moderation/sanctions/new">Apply Sanction</router-link> |
         <router-link to="/ratings">User Ratings</router-link> |
+        <router-link to="/admin/ratings">Admin Ratings</router-link> |
+        <router-link to="/matching/users">User Suggestions</router-link> |
         <router-link to="/search/facilities">Facility Search</router-link>
       </nav>
     </header>
