@@ -14,6 +14,7 @@ import AllBookings from '../views/bookings/AllBookings.vue'
 import CreateBooking from '../views/bookings/CreateBooking.vue'
 import BookingFacilitySearch from '../views/bookings/BookingFacilitySearch.vue'
 import AdminRatings from '../views/ratings/AdminRatings.vue'
+import ActivityDetail from '../views/activities/ActivityDetail.vue'
 
 const routes = [
   {
@@ -29,6 +30,11 @@ const routes = [
     path: '/activities/new',
     name: 'CreateActivity',
     component: CreateActivity
+  },
+  {
+    path: '/activities/:id',
+    name: 'ActivityDetail',
+    component: ActivityDetail
   },
   {
     path: '/slots',
