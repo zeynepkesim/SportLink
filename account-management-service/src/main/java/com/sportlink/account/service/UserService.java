@@ -20,7 +20,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -64,6 +68,15 @@ public class UserService {
         UserProfile saved = userProfileRepository.save(user);
         log.info("User registered: {}", saved.getUserId());
         return toResponse(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserProfileResponse> getAllUsers(int page, int size) {
+        return userProfileRepository
+                .findAll(PageRequest.of(page, size, Sort.by("createdAt").descending()))
+                .stream()
+                .map(this::toResponse)
+                .toList();
     }
 
     @Transactional(readOnly = true)

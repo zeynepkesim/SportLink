@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { authState } from '../store/authStore'
 
 import AllActivities from '../views/activities/AllActivities.vue'
 import CreateActivity from '../views/activities/CreateActivity.vue'
@@ -9,6 +10,7 @@ import AccountRegister from '../views/account/Register.vue'
 import UserProfile from '../views/account/UserProfile.vue'
 import UpdateUserStatus from '../views/account/UpdateUserStatus.vue'
 import SportCenter from '../views/account/SportCenter.vue'
+import AllUsers from '../views/account/AllUsers.vue'
 import ModerationCases from '../views/moderation/Cases.vue'
 import CreateCase from '../views/moderation/CreateCase.vue'
 import CaseDetail from '../views/moderation/CaseDetail.vue'
@@ -48,12 +50,14 @@ const routes = [
   {
     path: '/activities/new',
     name: 'CreateActivity',
-    component: CreateActivity
+    component: CreateActivity,
+    meta: { requiresAuth: true }
   },
   {
     path: '/activities/:id',
     name: 'ActivityDetail',
-    component: ActivityDetail
+    component: ActivityDetail,
+    meta: { requiresAuth: true }
   },
   {
     path: '/slots',
@@ -88,17 +92,26 @@ const routes = [
   {
     path: '/account/profile',
     name: 'UserProfile',
-    component: UserProfile
+    component: UserProfile,
+    meta: { requiresAuth: true }
   },
   {
     path: '/account/status',
     name: 'UpdateUserStatus',
-    component: UpdateUserStatus
+    component: UpdateUserStatus,
+    meta: { requiresAuth: true }
   },
   {
     path: '/account/sport-center',
     name: 'SportCenter',
-    component: SportCenter
+    component: SportCenter,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/account/users',
+    name: 'AllUsers',
+    component: AllUsers,
+    meta: { requiresAuth: true }
   },
   {
     path: '/moderation/cases',
@@ -220,6 +233,14 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
   routes
+})
+
+router.beforeEach((to, _from, next) => {
+  if (to.meta.requiresAuth && !authState.token) {
+    next({ name: 'AccountLogin', query: { redirect: to.fullPath } })
+  } else {
+    next()
+  }
 })
 
 export default router

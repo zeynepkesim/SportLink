@@ -25,6 +25,8 @@
 
     <template v-if="profile">
       <hr />
+
+      <!-- ============ REPUTATION (shown when viewing any profile) ============ -->
       <div class="profile-header">
         <p class="readonly">
           <small>
@@ -35,7 +37,6 @@
           </small>
         </p>
 
-        <!-- ============ REPUTATION ============ -->
         <div v-if="reputation" class="reputation-card">
           <div class="reputation-score">
             <span class="score-value">{{ reputation.averageScore.toFixed(1) }}</span>
@@ -43,9 +44,9 @@
           </div>
           <div class="reputation-meta">
             <span>{{ reputation.totalRatings }} ratings</span>
-            <button 
-              v-if="isModerator" 
-              @click="recomputeReputation" 
+            <button
+              v-if="isModerator"
+              @click="recomputeReputation"
               class="ghost small"
               :disabled="loading"
             >Recompute</button>
@@ -53,61 +54,113 @@
         </div>
         <div v-else class="reputation-card empty">
           <p>No reputation data available yet.</p>
-          <button 
-            v-if="isModerator" 
-            @click="recomputeReputation" 
+          <button
+            v-if="isModerator"
+            @click="recomputeReputation"
             class="ghost small"
             :disabled="loading"
           >Initialize</button>
         </div>
       </div>
 
-      <h3>Update fields</h3>
+      <!-- ── Read-only profile card (viewing someone else) ── -->
+      <div v-if="!isOwnProfile" class="profile-card">
+        <div class="pc-avatar" :style="{ background: avatarColor(profile.name) }">
+          {{ initials(profile.name) }}
+        </div>
+        <div class="pc-name">{{ profile.name || 'Unnamed' }}</div>
+        <div class="pc-email">{{ profile.email }}</div>
+        <div class="pc-badges">
+          <span class="badge" :class="'role-' + (profile.role || '').toLowerCase()">{{ profile.role }}</span>
+          <span class="badge" :class="'status-' + (profile.status || '').toLowerCase()">{{ profile.status }}</span>
+          <span v-if="profile.skillLevel" class="badge skill">{{ profile.skillLevel }}</span>
+        </div>
+        <button
+          class="follow-btn"
+          :class="{ following }"
+          :disabled="followLoading"
+          @click="toggleFollow"
+        >
+          <span v-if="followLoading">…</span>
+          <span v-else-if="following">✓ Following</span>
+          <span v-else>+ Follow</span>
+        </button>
+        <div class="pc-grid">
+          <div v-if="profile.language" class="pc-item">
+            <span class="pc-icon">🌐</span>
+            <span class="pc-label">Language</span>
+            <span class="pc-value">{{ profile.language }}</span>
+          </div>
+          <div v-if="profile.city || profile.district" class="pc-item">
+            <span class="pc-icon">📍</span>
+            <span class="pc-label">Location</span>
+            <span class="pc-value">{{ [profile.city, profile.district].filter(Boolean).join(', ') }}</span>
+          </div>
+          <div v-if="profile.sportPreferences" class="pc-item pc-item--full">
+            <span class="pc-icon">🏅</span>
+            <span class="pc-label">Sport preferences</span>
+            <span class="pc-value">{{ profile.sportPreferences }}</span>
+          </div>
+        </div>
+      </div>
 
-      <label>Name</label>
-      <input v-model="updates.name" />
+      <!-- ── Own profile: compact summary + edit form ── -->
+      <template v-else>
+        <p class="readonly">
+          <small>
+            <b>Name:</b> {{ profile.name }}&ensp;·&ensp;
+            <b>Email:</b> {{ profile.email }}&ensp;·&ensp;
+            <b>Role:</b> {{ profile.role }}&ensp;·&ensp;
+            <b>Status:</b> {{ profile.status }}
+          </small>
+        </p>
 
-      <label>Phone</label>
-      <input v-model="updates.phone" />
+        <h3>Update fields</h3>
 
-      <label>Other contact</label>
-      <input v-model="updates.other" />
+        <label>Name</label>
+        <input v-model="updates.name" />
 
-      <label>Skill level</label>
-      <select v-model="updates.skillLevel">
-        <option :value="null">— Keep current —</option>
-        <option value="BEGINNER">BEGINNER</option>
-        <option value="INTERMEDIATE">INTERMEDIATE</option>
-        <option value="ADVANCED">ADVANCED</option>
-        <option value="PROFESSIONAL">PROFESSIONAL</option>
-      </select>
+        <label>Phone</label>
+        <input v-model="updates.phone" />
 
-      <label>Language</label>
-      <input v-model="updates.language" />
+        <label>Other contact</label>
+        <input v-model="updates.other" />
 
-      <label>Sport preferences (comma separated)</label>
-      <input v-model="updates.sportPreferences" />
+        <label>Skill level</label>
+        <select v-model="updates.skillLevel">
+          <option :value="null">— Keep current —</option>
+          <option value="BEGINNER">BEGINNER</option>
+          <option value="INTERMEDIATE">INTERMEDIATE</option>
+          <option value="ADVANCED">ADVANCED</option>
+          <option value="PROFESSIONAL">PROFESSIONAL</option>
+        </select>
 
-      <label>City</label>
-      <input v-model="updates.city" />
+        <label>Language</label>
+        <input v-model="updates.language" />
 
-      <label>District</label>
-      <input v-model="updates.district" />
+        <label>Sport preferences (comma separated)</label>
+        <input v-model="updates.sportPreferences" />
 
-      <button @click="saveProfile" :disabled="loading">
-        <Spinner v-if="loading && profile" :size="14" inline />
-        <span>{{ loading ? 'Saving…' : 'Save changes' }}</span>
-      </button>
+        <label>City</label>
+        <input v-model="updates.city" />
 
-      <div v-if="saveError" class="error"><p><b>Error:</b> {{ saveError }}</p></div>
+        <label>District</label>
+        <input v-model="updates.district" />
+
+        <button @click="saveProfile" :disabled="loading">
+          <Spinner v-if="loading && profile" :size="14" inline />
+          <span>{{ loading ? 'Saving…' : 'Save changes' }}</span>
+        </button>
+
+        <div v-if="saveError" class="error"><p><b>Error:</b> {{ saveError }}</p></div>
+      </template>
     </template>
   </div>
 </template>
 
 <script>
-import { accountApi, ratingApi } from '../../api/client'
-// eslint-disable-next-line no-unused-vars
-import { authState, authState as authStore } from '../../store/authStore'
+import { accountApi, interactionApi, ratingApi } from '../../api/client'
+import { authState } from '../../store/authStore'
 import { toast } from '../../store/toastStore'
 import Spinner from '../../components/Spinner.vue'
 
@@ -126,6 +179,8 @@ export default {
       loading: false,
       loadError: null,
       saveError: null,
+      following: false,
+      followLoading: false,
       authState
     }
   },
@@ -133,20 +188,59 @@ export default {
     canUseMyId() {
       return authState.token && authState.accountType === 'USER' && authState.accountId
     },
+    isOwnProfile() {
+      return authState.accountId && this.userId === authState.accountId
+    },
     isModerator() {
       return authState.accountType === 'MODERATOR'
     }
   },
   mounted() {
-    // Pre-fill with the signed-in user's id (but don't fetch automatically;
-    // moderators may legitimately want to look up someone else first).
-    if (this.canUseMyId) {
+    if (this.$route.query.id) {
+      this.userId = this.$route.query.id
+      this.fetchUser()
+    } else if (this.canUseMyId) {
       this.userId = authState.accountId
     }
   },
   methods: {
     useMyId() {
       this.userId = authState.accountId
+    },
+    initials(name) {
+      if (!name) return '?'
+      return name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()
+    },
+    avatarColor(name) {
+      const palette = ['#3498db','#2ecc71','#9b59b6','#e67e22','#1abc9c','#e74c3c','#34495e']
+      if (!name) return palette[0]
+      return palette[name.charCodeAt(0) % palette.length]
+    },
+    async checkFollowing() {
+      if (!authState.accountId || this.isOwnProfile) return
+      try {
+        const res = await interactionApi.isFollowing(authState.accountId, this.userId)
+        this.following = res?.following ?? false
+      } catch { /* ignore */ }
+    },
+    async toggleFollow() {
+      if (!authState.accountId) { toast.error('Sign in to follow users.'); return }
+      this.followLoading = true
+      try {
+        if (this.following) {
+          await interactionApi.unfollowUser(authState.accountId, this.userId)
+          this.following = false
+          toast.info('Unfollowed.')
+        } else {
+          await interactionApi.followUser(authState.accountId, this.userId)
+          this.following = true
+          toast.success('Following!')
+        }
+      } catch (e) {
+        toast.error(e.message)
+      } finally {
+        this.followLoading = false
+      }
     },
     async fetchUser() {
       this.loading = true; this.loadError = null; this.profile = null; this.reputation = null
@@ -157,6 +251,7 @@ export default {
         ])
         this.profile = profile
         this.reputation = reputation
+        this.checkFollowing()
         this.updates = {
           name: this.profile.name || '',
           phone: this.profile.phone || '',
@@ -242,6 +337,85 @@ button:disabled { background: #aaa; cursor: not-allowed; }
 .readonly { background: #eaf3fa; padding: 10px 14px; border-radius: 6px; }
 .error { background: #fadbd8; color: #c0392b; padding: 10px 14px; margin-top: 14px; border-radius: 6px; font-size: 0.9em; }
 hr { border: none; border-top: 1px solid #eee; margin: 20px 0; }
+
+/* ── Profile card (read-only view) ── */
+.profile-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 8px 0 4px;
+}
+.pc-avatar {
+  width: 80px; height: 80px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-size: 1.8em; font-weight: bold;
+  margin-bottom: 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.pc-name {
+  font-size: 1.3em; font-weight: bold; color: #2c3e50; margin-bottom: 4px;
+}
+.pc-email {
+  font-size: 0.85em; color: #888; margin-bottom: 12px;
+}
+.pc-badges {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-bottom: 20px;
+}
+.badge {
+  font-size: 0.72em; font-weight: bold; padding: 3px 10px;
+  border-radius: 999px; text-transform: uppercase; letter-spacing: 0.3px;
+  background: #ecf0f1; color: #555;
+}
+.badge.role-user       { background: #d6eaf8; color: #1f618d; }
+.badge.role-moderator  { background: #e8daef; color: #6c3483; }
+.badge.role-organizer  { background: #d5f5e3; color: #1e8449; }
+.badge.status-active   { background: #d5f5e3; color: #1e8449; }
+.badge.status-suspended { background: #fdebd0; color: #935116; }
+.badge.status-banned   { background: #fadbd8; color: #922b21; }
+.badge.skill           { background: #f4f6f7; color: #555; }
+
+.follow-btn {
+  margin-bottom: 20px;
+  padding: 8px 28px;
+  border-radius: 999px;
+  border: 2px solid #3498db;
+  background: #3498db;
+  color: white;
+  font-weight: bold;
+  font-size: 0.9em;
+  cursor: pointer;
+  min-width: 120px;
+  transition: background 0.15s, color 0.15s;
+}
+.follow-btn.following {
+  background: white;
+  color: #3498db;
+}
+.follow-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.pc-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  text-align: left;
+}
+.pc-item {
+  background: #f8f9fa;
+  border: 1px solid #eaecef;
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pc-item--full { grid-column: 1 / -1; }
+.pc-icon { font-size: 1em; margin-bottom: 2px; }
+.pc-label {
+  font-size: 0.7em; text-transform: uppercase; letter-spacing: 0.5px;
+  color: #aaa; font-weight: bold;
+}
+.pc-value { font-size: 0.9em; color: #2c3e50; font-weight: 500; }
 
 .profile-header {
   display: flex;
