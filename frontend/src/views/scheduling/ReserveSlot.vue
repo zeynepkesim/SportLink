@@ -3,9 +3,9 @@
     <h2>Reserve a Time Slot</h2>
 
     <p class="hint">
-      Usually slots are reserved automatically when you create an activity
-      with a <i>preferredTimeSlotId</i>. This page is for direct testing
-      against Scheduling Service.
+      Reserve a custom time window for one of your activities. Usually slots
+      are reserved automatically when you create an activity — this page is
+      for additional reservations or testing.
     </p>
 
     <div v-if="!authState.token" class="error">
@@ -23,8 +23,18 @@
       <label>End Time (ISO format)</label>
       <input v-model="form.endTime" placeholder="2026-05-20T15:30:00" />
 
-      <label>Reserved For ID (UUID of an activity or booking)</label>
-      <input v-model="form.reservedForId" placeholder="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" />
+      <label>Reserved For (one of your activities)</label>
+      <select v-model="form.reservedForId" :disabled="loadingActivities">
+        <option value="">— Select an activity —</option>
+        <option v-for="a in myActivities" :key="a.activityId" :value="a.activityId">
+          {{ a.title }} ({{ a.sportType }}, {{ a.status }})
+        </option>
+      </select>
+      <p v-if="loadingActivities" class="muted">Loading your activities…</p>
+      <p v-else-if="myActivities.length === 0" class="muted">
+        You don't have any activities yet —
+        <router-link to="/activities/new">create one</router-link> first.
+      </p>
 
       <button @click="submit" :disabled="loading || !canSubmit">
         {{ loading ? 'Reserving…' : 'Reserve Slot' }}
@@ -43,7 +53,7 @@
 </template>
 
 <script>
-import { schedulingApi } from '../../api/client'
+import { schedulingApi, activityApi } from '../../api/client'
 import { authState } from '../../store/authStore'
 
 export default {
@@ -56,6 +66,8 @@ export default {
         endTime: '',
         reservedForId: ''
       },
+      myActivities: [],
+      loadingActivities: false,
       loading: false,
       error: null,
       result: null
@@ -67,6 +79,23 @@ export default {
     }
   },
   methods: {
+    async fetchMyActivities() {
+      this.loadingActivities = true
+      try {
+        const all = await activityApi.list()
+        // Filter to activities where the logged-in user is the organizer
+        // and the activity is still active (PLANNED or ACTIVE)
+        this.myActivities = all.filter(a =>
+          a.organizerId === this.authState.accountId &&
+          (a.status === 'PLANNED' || a.status === 'ACTIVE')
+        )
+      } catch (err) {
+        this.myActivities = []
+      } finally {
+        this.loadingActivities = false
+      }
+    },
+
     async submit() {
       this.error = null
       this.result = null
@@ -87,6 +116,9 @@ export default {
         this.loading = false
       }
     }
+  },
+  mounted() {
+    if (this.authState.token) this.fetchMyActivities()
   }
 }
 </script>
@@ -129,7 +161,7 @@ label {
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
-input {
+input, select {
   display: block;
   width: 100%;
   padding: 10px;
@@ -137,10 +169,17 @@ input {
   border: 1px solid #d5dde0;
   border-radius: 6px;
   font-size: 0.95em;
+  background: white;
 }
-input:focus {
+input:focus, select:focus {
   outline: none;
   border-color: #f39c12;
+}
+.muted {
+  color: #999;
+  font-size: 0.85em;
+  margin: 6px 0 0;
+  font-style: italic;
 }
 button {
   background: #f39c12;
