@@ -152,7 +152,21 @@ nav.grouped {
   padding: 16px;
   background: #f4f4f4;
   border-radius: 8px;
+  margin-bottom: 14px;
+  line-height: 2;
+}
+
+nav.search-nav {
+  background: #eaf3ff;
+  border: 1px solid #d6e9ff;
   margin-bottom: 30px;
+  padding: 12px 20px;
+}
+
+nav.search-nav .nav-label {
+  font-weight: bold;
+  color: #1f3a5f;
+  margin-right: 8px;
 }
 
 nav .group {
