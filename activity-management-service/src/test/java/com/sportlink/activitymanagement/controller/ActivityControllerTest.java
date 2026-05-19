@@ -66,6 +66,9 @@ class ActivityControllerTest {
     private com.sportlink.activitymanagement.client.SchedulingClient schedulingClient;
 
     @MockBean
+    private com.sportlink.activitymanagement.security.AuthContext authContext;
+
+    @MockBean
     private com.sportlink.activitymanagement.service.ActivityEventPublisher activityEventPublisher;
 
  
