@@ -37,12 +37,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
-        return build(HttpStatus.FORBIDDEN, "Access denied: " + ex.getMessage(), null);
+        return build(HttpStatus.FORBIDDEN,
+                "You do not have permission to perform this action.", null);
     }
 
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ErrorResponse> handleAuthentication(AuthenticationException ex) {
-        return build(HttpStatus.UNAUTHORIZED, "Authentication failed: " + ex.getMessage(), null);
+        return build(HttpStatus.UNAUTHORIZED, "Authentication required.", null);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

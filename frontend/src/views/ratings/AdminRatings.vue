@@ -62,6 +62,7 @@
           <span class="label">({{ rating.skillLabel }})</span>
         </div>
         <div class="rating-actions">
+          <router-link :to="'/ratings/detail/' + rating.ratingId" class="view-link">View Details</router-link>
           <button type="button" class="delete-button" @click="confirmDelete(rating.ratingId)">Delete</button>
         </div>
       </div>
@@ -223,6 +224,20 @@ export default {
 
 .rating-actions {
   margin-top: 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.view-link {
+  color: #3498db;
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 0.9em;
+}
+
+.view-link:hover {
+  text-decoration: underline;
 }
 
 .delete-button {

@@ -41,6 +41,9 @@
           <strong>Skill:</strong> {{ rating.skillValue }} / 5
           <span class="label">({{ rating.skillLabel }})</span>
         </div>
+        <div class="rating-actions">
+          <router-link :to="'/ratings/detail/' + rating.ratingId" class="view-link">View Details</router-link>
+        </div>
       </div>
     </div>
   </div>
@@ -180,6 +183,21 @@ export default {
 
 .rating-row {
   margin-bottom: 8px;
+}
+
+.rating-actions {
+  margin-top: 16px;
+}
+
+.view-link {
+  color: #3498db;
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 0.9em;
+}
+
+.view-link:hover {
+  text-decoration: underline;
 }
 
 .label {

@@ -5,6 +5,10 @@ spring:
   application:
     name: moderation-service
 
+  web:
+    locale: en
+    locale-resolver: fixed
+
   datasource:
     url: jdbc:postgresql://localhost:5439/moderation_service_db
     username: postgres

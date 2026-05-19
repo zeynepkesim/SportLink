@@ -20,7 +20,7 @@ public class AccountManagementClient {
 
     public AccountManagementClient(WebClient.Builder webClientBuilder,
                                    @Value("${sportlink.mock.dependencies:true}") boolean mock,
-                                   @Value("${sportlink.services.account-management.url:http://localhost:8081}") String accountManagementUrl) {
+                                   @Value("${sportlink.services.account-management.url:http://account-service:8081}") String accountManagementUrl) {
         this.webClientBuilder = webClientBuilder;
         this.mock = mock;
         this.accountManagementUrl = accountManagementUrl;

@@ -25,7 +25,10 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.web.bind.annotation.CrossOrigin;
 
-@CrossOrigin(origins = "http://localhost:8080")
+@CrossOrigin(origins = {
+    "http://localhost:8080",
+    "http://frontend:8080"
+})
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor

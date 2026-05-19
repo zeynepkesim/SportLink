@@ -66,6 +66,9 @@ services:
       SPRING_DATASOURCE_PASSWORD: postgres
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       SPORTLINK_JWT_SECRET: ${SPORTLINK_JWT_SECRET:-dev-only-shared-secret-please-replace-in-production-256-bit-min}
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
+      JAVA_TOOL_OPTIONS: "-Duser.language=en -Duser.country=US"
     ports:
       - "8081:8081"
     networks:
@@ -111,6 +114,9 @@ services:
       ACCOUNT_MANAGEMENT_BASE_URL: http://account-service:8081
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       SPORTLINK_JWT_SECRET: ${SPORTLINK_JWT_SECRET:-dev-only-shared-secret-please-replace-in-production-256-bit-min}
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
+      JAVA_TOOL_OPTIONS: "-Duser.language=en -Duser.country=US"
     ports:
       - "8090:8090"
     networks:
