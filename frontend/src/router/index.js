@@ -5,8 +5,15 @@ import CreateActivity from '../views/activities/CreateActivity.vue'
 import AvailableSlots from '../views/scheduling/AvailableSlots.vue'
 import ReserveSlot from '../views/scheduling/ReserveSlot.vue'
 import AccountLogin from '../views/account/Login.vue'
+import AccountRegister from '../views/account/Register.vue'
+import UserProfile from '../views/account/UserProfile.vue'
+import UpdateUserStatus from '../views/account/UpdateUserStatus.vue'
+import SportCenter from '../views/account/SportCenter.vue'
 import ModerationCases from '../views/moderation/Cases.vue'
+import CreateCase from '../views/moderation/CreateCase.vue'
+import CaseDetail from '../views/moderation/CaseDetail.vue'
 import ApplySanction from '../views/moderation/ApplySanction.vue'
+import SanctionHistory from '../views/moderation/SanctionHistory.vue'
 import UserRatings from '../views/ratings/UserRatings.vue'
 import FacilitySearch from '../views/search/FacilitySearch.vue'
 import UserSuggestion from '../views/matching/UserSuggestion.vue'
@@ -72,9 +79,39 @@ const routes = [
     component: AccountLogin
   },
   {
+    path: '/account/register',
+    name: 'AccountRegister',
+    component: AccountRegister
+  },
+  {
+    path: '/account/profile',
+    name: 'UserProfile',
+    component: UserProfile
+  },
+  {
+    path: '/account/status',
+    name: 'UpdateUserStatus',
+    component: UpdateUserStatus
+  },
+  {
+    path: '/account/sport-center',
+    name: 'SportCenter',
+    component: SportCenter
+  },
+  {
     path: '/moderation/cases',
     name: 'ModerationCases',
     component: ModerationCases
+  },
+  {
+    path: '/moderation/cases/new',
+    name: 'CreateCase',
+    component: CreateCase
+  },
+  {
+    path: '/moderation/cases/:id',
+    name: 'CaseDetail',
+    component: CaseDetail
   },
   {
     path: '/moderation/sanctions/new',
@@ -82,7 +119,12 @@ const routes = [
     component: ApplySanction
   },
   {
-    path: '/ratings/:userId?',
+    path: '/moderation/sanctions/history',
+    name: 'SanctionHistory',
+    component: SanctionHistory
+  },
+  {
+    path: '/ratings',
     name: 'UserRatings',
     component: UserRatings
   },
