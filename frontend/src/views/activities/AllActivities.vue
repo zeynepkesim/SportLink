@@ -1,9 +1,6 @@
 <template>
   <div class="activities">
-    <div class="tab-bar">
-      <button :class="['tab', { active: tab === 'all' }]" @click="switchTab('all')">All Activities</button>
-      <button :class="['tab', { active: tab === 'feed' }]" @click="switchTab('feed')">My Feed</button>
-    </div>
+    <h2 class="feed-title">My Feed</h2>
 
     <div v-if="loading" class="loading">Loading...</div>
 
@@ -13,17 +10,12 @@
     </div>
 
     <template v-else>
-      <div v-if="tab === 'feed' && !isLoggedIn" class="empty">
+      <div v-if="!isLoggedIn" class="empty">
         <p>Sign in to see your personalised feed.</p>
       </div>
 
       <div v-else-if="displayed.length === 0" class="empty">
-        <template v-if="tab === 'feed'">
-          <p>Nothing here yet. Follow some users and their activities will appear here.</p>
-        </template>
-        <template v-else>
-          <p>No activities yet. <router-link to="/activities/new">Create the first one</router-link>!</p>
-        </template>
+        <p>Nothing here yet. Follow some users and their activities will appear here.</p>
       </div>
 
       <div v-else>
@@ -62,7 +54,6 @@ export default {
   name: 'AllActivities',
   data() {
     return {
-      tab: 'all',
       activities: [],
       profiles: {},
       followingIds: new Set(),
@@ -76,19 +67,10 @@ export default {
       return !!authState.token && authState.accountType === 'USER'
     },
     displayed() {
-      if (this.tab === 'feed') {
-        return this.activities.filter(a => this.followingIds.has(a.organizerId))
-      }
-      return this.activities
+      return this.activities.filter(a => this.followingIds.has(a.organizerId))
     }
   },
   methods: {
-    switchTab(t) {
-      this.tab = t
-      if (t === 'feed' && this.isLoggedIn) {
-        this.loadFollowing()
-      }
-    },
     async load() {
       this.loading = true
       this.error = null
@@ -96,7 +78,7 @@ export default {
         this.activities = await activityApi.list()
         const uniqueOrganizers = [...new Set(this.activities.map(a => a.organizerId))]
         uniqueOrganizers.forEach(id => this.fetchProfile(id))
-        if (this.isLoggedIn) this.loadFollowing()
+        if (this.isLoggedIn) await this.loadFollowing()
       } catch (err) {
         if (!err.silent) this.error = err.message
       } finally {
@@ -130,28 +112,7 @@ export default {
 
 <style scoped>
 .activities { text-align: left; }
-
-.tab-bar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 20px;
-  border-bottom: 2px solid #e8ecef;
-  padding-bottom: 0;
-}
-.tab {
-  background: none;
-  border: none;
-  padding: 8px 20px;
-  font-size: 0.95em;
-  font-weight: bold;
-  color: #888;
-  cursor: pointer;
-  border-bottom: 3px solid transparent;
-  margin-bottom: -2px;
-  transition: color 0.15s, border-color 0.15s;
-}
-.tab.active { color: #42b983; border-bottom-color: #42b983; }
-.tab:hover:not(.active) { color: #555; }
+.feed-title { color: #2c3e50; margin-bottom: 20px; }
 
 .count { text-align: center; color: #555; }
 .item {

@@ -150,6 +150,21 @@ export const interactionApi = {
     interactionRequest(`/api/users/${userId}/following?size=${size}`, {})
 }
 
+export const commentApi = {
+  getComments: (activityId, page = 0, size = 50) =>
+    interactionRequest(`/api/activities/${activityId}/comments?page=${page}&size=${size}`),
+  postComment: (userId, activityId, body, activityOwnerId) =>
+    interactionRequest(`/api/activities/${activityId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ body, activityOwnerId })
+    }, userId),
+  deleteComment: (userId, userRole, commentId) =>
+    interactionRequest(`/api/comments/${commentId}`, {
+      method: 'DELETE',
+      headers: { 'X-User-Role': userRole || 'USER' }
+    }, userId)
+}
+
 function notificationRequest(path, options = {}, userId) {
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) }
   if (userId) headers['X-User-Id'] = userId

@@ -56,7 +56,7 @@
       </section>
 
       <!-- ============ EDIT ============ -->
-      <section v-if="activity.status === 'PLANNED' || activity.status === 'ACTIVE'">
+      <section v-if="isOrganizer && (activity.status === 'PLANNED' || activity.status === 'ACTIVE')">
         <h3>Edit Activity</h3>
         <label>Title</label>
         <input v-model="editForm.title" />
@@ -97,13 +97,13 @@
             <small class="joined-at">joined {{ formatDate(p.joinedAt) }}</small>
             <div class="participant-actions">
               <button
-                v-if="activity.status === 'COMPLETED' && p.userId !== participantUserId"
+                v-if="activity.status === 'COMPLETED' && p.userId !== authState.accountId"
                 class="btn-secondary small"
                 @click="toggleRating(p.userId)">
                 {{ ratingForUserId === p.userId ? 'Cancel Rating' : 'Rate' }}
               </button>
               <button
-                v-if="p.role !== 'ORGANIZER' && activity.status !== 'COMPLETED'"
+                v-if="isOrganizer && p.role !== 'ORGANIZER' && activity.status !== 'COMPLETED'"
                 class="btn-danger small"
                 @click="removeParticipant(p.userId)">
                 Remove
@@ -117,43 +117,71 @@
       <section v-if="activity.status === 'COMPLETED' && ratingForUserId">
         <h3>Rate Participant: {{ profileFor(ratingForUserId)?.name || ratingForUserId }}</h3>
         <p class="muted">You are rating this user for their performance in "{{ activity.title }}"</p>
-        
-        <div class="manual-reviewer">
-          <label>Your User ID (Reviewer)</label>
-          <input v-model="participantUserId" placeholder="Enter your User UUID" />
-        </div>
-
-        <LeaveRating 
-          v-if="participantUserId"
+        <LeaveRating
           :activityId="activityId"
-          :reviewerId="participantUserId"
+          :reviewerId="authState.accountId"
           :revieweeId="ratingForUserId"
           @rating-submitted="onRatingSubmitted"
         />
-        <p v-else class="error-msg">Please enter your User ID above to leave a rating.</p>
       </section>
 
       <!-- ============ JOIN/LEAVE ============ -->
-      <section v-if="activity.status === 'PLANNED' || activity.status === 'ACTIVE'">
-        <h3>Join / Leave</h3>
-        <label>User ID</label>
-        <input v-model="participantUserId" placeholder="UUID of user" />
+      <section v-if="authState.token && !isOrganizer && (activity.status === 'PLANNED' || activity.status === 'ACTIVE')">
         <div class="actions">
           <button class="btn-primary" @click="joinActivity" :disabled="actionLoading">
-            Join as this user
+            {{ actionLoading ? 'Joining…' : 'Join this event' }}
           </button>
           <button class="btn-secondary" @click="leaveActivity" :disabled="actionLoading">
-            Leave as this user
+            {{ actionLoading ? 'Leaving…' : 'Leave this event' }}
           </button>
         </div>
       </section>
 
       <!-- ============ CANCEL ============ -->
-      <section v-if="activity.status !== 'CANCELLED' && activity.status !== 'COMPLETED'" class="danger-zone">
+      <section v-if="isOrganizer && activity.status !== 'CANCELLED' && activity.status !== 'COMPLETED'" class="danger-zone">
         <h3>Danger Zone</h3>
         <button class="btn-danger" @click="cancelActivity" :disabled="actionLoading">
           {{ actionLoading ? 'Cancelling…' : 'Cancel This Activity' }}
         </button>
+      </section>
+
+      <!-- ============ COMMENTS ============ -->
+      <section class="comments-section">
+        <h3>Comments ({{ comments.length }})</h3>
+
+        <div v-if="commentsLoading" class="muted">Loading comments…</div>
+
+        <div v-else-if="comments.length === 0" class="muted">No comments yet. Be the first!</div>
+
+        <ul v-else class="comments-list">
+          <li v-for="c in comments" :key="c.id" class="comment-item">
+            <div class="comment-header">
+              <span class="comment-author">{{ authorName(c.authorId) }}</span>
+              <span class="comment-time">{{ formatDate(c.createdAt) }}</span>
+              <button
+                v-if="authState.accountId === c.authorId || authState.accountType === 'MODERATOR'"
+                class="btn-danger small comment-delete"
+                @click="deleteComment(c.id)"
+              >Delete</button>
+            </div>
+            <p class="comment-body">{{ c.body }}</p>
+          </li>
+        </ul>
+
+        <div v-if="authState.token" class="comment-form">
+          <textarea
+            v-model="newComment"
+            class="comment-input"
+            placeholder="Write a comment…"
+            rows="3"
+            maxlength="1000"
+          ></textarea>
+          <button class="btn-primary" @click="postComment" :disabled="!newComment.trim() || commentPosting">
+            {{ commentPosting ? 'Posting…' : 'Post Comment' }}
+          </button>
+          <p v-if="commentError" class="error-msg">{{ commentError }}</p>
+        </div>
+        <p v-else class="muted" style="margin-top:12px">Sign in to leave a comment.</p>
       </section>
 
       <!-- ============ MESSAGES ============ -->
@@ -169,6 +197,8 @@
 
 <script>
 import LeaveRating from '@/views/ratings/LeaveRating.vue'
+import { commentApi } from '@/api/client'
+import { authState } from '@/store/authStore'
 
 export default {
   name: 'ActivityDetail',
@@ -180,20 +210,31 @@ export default {
       activityId: this.$route.params.id,
       activity: null,
       organizer: null,
-      profiles: {},          // cache: userId -> profile
+      profiles: {},
       loading: false,
       loadingOrganizer: false,
       actionLoading: false,
       error: null,
       success: null,
       participantUserId: '',
-      ratingForUserId: null, // Track which user is being rated
+      ratingForUserId: null,
       editForm: {
         title: '',
         description: '',
         maxParticipants: 0,
         preferredTimeSlotId: ''
-      }
+      },
+      comments: [],
+      commentsLoading: false,
+      newComment: '',
+      commentPosting: false,
+      commentError: null,
+      authState
+    }
+  },
+  computed: {
+    isOrganizer() {
+      return !!(authState.accountId && this.activity && this.activity.organizerId === authState.accountId)
     }
   },
   methods: {
@@ -321,17 +362,14 @@ export default {
     },
 
     joinActivity() {
-      if (!this.participantUserId) {
-        this.error = 'Please enter a user ID first.'
-        return
-      }
+      if (!authState.accountId) { this.error = 'Sign in to join.'; return }
       this.actionLoading = true
       this.error = null
       this.success = null
       fetch(`http://localhost:8083/api/activities/${this.activityId}/join`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: this.participantUserId })
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authState.token}` },
+        body: JSON.stringify({ userId: authState.accountId })
       })
         .then(async r => {
           if (!r.ok) {
@@ -341,8 +379,7 @@ export default {
           return r.json()
         })
         .then(() => {
-          this.success = `User joined.`
-          this.participantUserId = ''
+          this.success = 'You joined the event!'
           this.fetchActivity()
         })
         .catch(err => { this.error = err.message })
@@ -350,17 +387,14 @@ export default {
     },
 
     leaveActivity() {
-      if (!this.participantUserId) {
-        this.error = 'Please enter a user ID first.'
-        return
-      }
+      if (!authState.accountId) { this.error = 'Sign in to leave.'; return }
       this.actionLoading = true
       this.error = null
       this.success = null
       fetch(`http://localhost:8083/api/activities/${this.activityId}/leave`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: this.participantUserId })
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authState.token}` },
+        body: JSON.stringify({ userId: authState.accountId })
       })
         .then(async r => {
           if (!r.ok && r.status !== 204) {
@@ -369,8 +403,7 @@ export default {
           }
         })
         .then(() => {
-          this.success = `User left.`
-          this.participantUserId = ''
+          this.success = 'You left the event.'
           this.fetchActivity()
         })
         .catch(err => { this.error = err.message })
@@ -405,10 +438,59 @@ export default {
       return new Date(iso).toLocaleString('en-GB', {
         day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
       })
+    },
+
+    async fetchComments() {
+      this.commentsLoading = true
+      try {
+        const page = await commentApi.getComments(this.activityId)
+        this.comments = page?.content ?? []
+        const unknownIds = [...new Set(this.comments.map(c => c.authorId))]
+          .filter(id => !this.profiles[id])
+        await Promise.all(unknownIds.map(id => this.fetchProfile(id)))
+      } catch { /* non-fatal */ } finally {
+        this.commentsLoading = false
+      }
+    },
+
+    async postComment() {
+      if (!this.newComment.trim()) return
+      this.commentPosting = true
+      this.commentError = null
+      try {
+        await commentApi.postComment(
+          authState.accountId,
+          this.activityId,
+          this.newComment.trim(),
+          this.activity?.organizerId ?? null
+        )
+        this.newComment = ''
+        await this.fetchComments()
+      } catch (e) {
+        this.commentError = e.message || 'Failed to post comment.'
+      } finally {
+        this.commentPosting = false
+      }
+    },
+
+    async deleteComment(commentId) {
+      if (!confirm('Delete this comment?')) return
+      this.commentError = null
+      try {
+        await commentApi.deleteComment(authState.accountId, authState.accountType, commentId)
+        this.comments = this.comments.filter(c => c.id !== commentId)
+      } catch (e) {
+        this.commentError = e.message || 'Failed to delete comment.'
+      }
+    },
+
+    authorName(userId) {
+      return this.profiles[userId]?.name || userId?.substring(0, 8) + '…'
     }
   },
   mounted() {
     this.fetchActivity()
+    this.fetchComments()
   }
 }
 </script>
@@ -553,4 +635,35 @@ button.small { padding: 4px 10px; font-size: 0.8em; margin-top: 0; }
   font-weight: bold;
   margin-top: 10px;
 }
+
+/* ── Comments ── */
+.comments-section { background: #f4f6f8; border-left: 4px solid #3498db; }
+.comments-list { list-style: none; padding: 0; margin: 0 0 16px; }
+.comment-item {
+  padding: 10px 0;
+  border-bottom: 1px solid #e0e4e8;
+}
+.comment-item:last-child { border-bottom: none; }
+.comment-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.comment-author { font-weight: bold; color: #2c3e50; font-size: 0.9em; }
+.comment-time { color: #aaa; font-size: 0.78em; flex: 1; }
+.comment-delete { margin-top: 0; }
+.comment-body { margin: 0; color: #444; font-size: 0.92em; line-height: 1.5; }
+.comment-form { margin-top: 16px; }
+.comment-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  border: 1px solid #d5dde0;
+  border-radius: 6px;
+  font-size: 0.92em;
+  resize: vertical;
+  font-family: inherit;
+}
+.comment-input:focus { outline: none; border-color: #3498db; }
 </style>
