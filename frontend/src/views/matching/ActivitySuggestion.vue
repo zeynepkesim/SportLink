@@ -77,7 +77,7 @@
 </template>
 
 <script>
-const BASE = 'http://localhost:8087/api/matching'
+import { matchingApi } from '../../api/client'
 
 export default {
   name: 'ActivitySuggestions',
@@ -92,41 +92,34 @@ export default {
     }
   },
   methods: {
-    fetchCached() {
-      this.call('GET')
+    async fetchCached() {
+      await this.call(false)
     },
-    recompute() {
-      this.call('POST')
+    async recompute() {
+      await this.call(true)
     },
-    call(method) {
+    async call(isRecompute) {
       if (!this.userId.trim()) return
 
       this.loading = true
       this.error = null
       this.suggestion = null
 
-      const params = new URLSearchParams({ limit: this.limit, minScore: this.minScore })
-      const url = `${BASE}/activities/${this.userId.trim()}/suggestions?${params}`
+      try {
+        const params = { limit: this.limit, minScore: this.minScore }
+        const id = this.userId.trim()
 
-      fetch(url, { method })
-        .then(response => {
-          if (!response.ok) {
-            return response.json().then(data => {
-              throw new Error(data.message || 'HTTP ' + response.status)
-            })
-          }
-          return response.json()
-        })
-        .then(data => {
-          this.suggestion = data
-        })
-        .catch(err => {
-          this.error = err.message
-          console.error(err)
-        })
-        .finally(() => {
-          this.loading = false
-        })
+        if (isRecompute) {
+          this.suggestion = await matchingApi.recomputeActivitySuggestions(id, params)
+        } else {
+          this.suggestion = await matchingApi.getActivitySuggestions(id, params)
+        }
+      } catch (err) {
+        this.error = err.message
+        console.error(err)
+      } finally {
+        this.loading = false
+      }
     },
     formatDate(value) {
       if (!value) return ''

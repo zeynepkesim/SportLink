@@ -74,7 +74,7 @@
 </template>
 
 <script>
-const BASE = 'http://localhost:8087/api/matching'
+import { matchingApi } from '../../api/client'
 
 export default {
   name: 'CompatibilityCheck',
@@ -95,37 +95,21 @@ export default {
     }
   },
   methods: {
-    checkCompatibility() {
+    async checkCompatibility() {
       if (!this.userAId.trim() || !this.userBId.trim()) return
 
       this.loading = true
       this.error = null
       this.result = null
 
-      const params = new URLSearchParams({
-        userAId: this.userAId.trim(),
-        userBId: this.userBId.trim()
-      })
-
-      fetch(`${BASE}/compatibility?${params}`)
-        .then(response => {
-          if (!response.ok) {
-            return response.json().then(data => {
-              throw new Error(data.message || 'HTTP ' + response.status)
-            })
-          }
-          return response.json()
-        })
-        .then(data => {
-          this.result = data
-        })
-        .catch(err => {
-          this.error = err.message
-          console.error(err)
-        })
-        .finally(() => {
-          this.loading = false
-        })
+      try {
+        this.result = await matchingApi.checkCompatibility(this.userAId.trim(), this.userBId.trim())
+      } catch (err) {
+        this.error = err.message
+        console.error(err)
+      } finally {
+        this.loading = false
+      }
     },
     pct(value) {
       return Math.round((value || 0) * 100) + '%'

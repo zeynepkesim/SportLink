@@ -71,6 +71,8 @@
 </template>
 
 <script>
+import { ratingApi } from '../../api/client'
+
 export default {
   name: 'AdminRatings',
   data() {
@@ -84,7 +86,7 @@ export default {
     }
   },
   methods: {
-    fetchRatings() {
+    async fetchRatings() {
       this.loading = true
       this.error = null
       this.ratings = []
@@ -94,24 +96,14 @@ export default {
       if (this.revieweeId) params.revieweeId = this.revieweeId
       if (this.activityId) params.activityId = this.activityId
 
-      const query = new URLSearchParams(params).toString()
-      fetch(`http://localhost:8082/api/ratings${query ? `?${query}` : ''}`)
-        .then(response => {
-          if (!response.ok) {
-            throw new Error('Failed to load ratings (HTTP ' + response.status + ')')
-          }
-          return response.json()
-        })
-        .then(data => {
-          this.ratings = data
-        })
-        .catch(err => {
-          this.error = err.message
-          console.error(err)
-        })
-        .finally(() => {
-          this.loading = false
-        })
+      try {
+        this.ratings = await ratingApi.getRatings(params)
+      } catch (err) {
+        this.error = err.message
+        console.error(err)
+      } finally {
+        this.loading = false
+      }
     },
     confirmDelete(ratingId) {
       if (!window.confirm('Delete rating ' + ratingId + '?')) {
@@ -119,27 +111,18 @@ export default {
       }
       this.deleteRating(ratingId)
     },
-    deleteRating(ratingId) {
+    async deleteRating(ratingId) {
       this.loading = true
       this.error = null
 
-      fetch(`http://localhost:8082/api/ratings/${ratingId}`, {
-        method: 'DELETE'
-      })
-        .then(response => {
-          if (!response.ok) {
-            throw new Error('Failed to delete rating (HTTP ' + response.status + ')')
-          }
-          return response.text()
-        })
-        .then(() => {
-          this.fetchRatings()
-        })
-        .catch(err => {
-          this.error = err.message
-          console.error(err)
-          this.loading = false
-        })
+      try {
+        await ratingApi.deleteRating(ratingId)
+        await this.fetchRatings()
+      } catch (err) {
+        this.error = err.message
+        console.error(err)
+        this.loading = false
+      }
     },
     formatDate(value) {
       if (!value) return ''

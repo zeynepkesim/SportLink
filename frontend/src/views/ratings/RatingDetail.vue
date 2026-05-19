@@ -96,27 +96,17 @@ export default {
     }
   },
   methods: {
-    fetchRating() {
+    async fetchRating() {
       this.loading = true
       this.error = null
-      fetch(`http://localhost:8082/api/ratings/${this.ratingId}`)
-        .then(async res => {
-          if (!res.ok) {
-            const body = await res.json().catch(() => ({}))
-            throw new Error(body.message || `HTTP ${res.status}`)
-          }
-          return res.json()
-        })
-        .then(data => {
-          this.rating = data
-        })
-        .catch(err => {
-          this.error = err.message
-          console.error(err)
-        })
-        .finally(() => {
-          this.loading = false
-        })
+      try {
+        this.rating = await ratingApi.getRating(this.ratingId)
+      } catch (err) {
+        this.error = err.message
+        console.error(err)
+      } finally {
+        this.loading = false
+      }
     },
     async recomputeReputation() {
       if (!this.rating) return
@@ -134,22 +124,17 @@ export default {
       if (!confirm('Are you sure you want to permanently delete this rating?')) return
       this.deleteRating()
     },
-    deleteRating() {
+    async deleteRating() {
       this.deleting = true
-      fetch(`http://localhost:8082/api/ratings/${this.ratingId}`, {
-        method: 'DELETE'
-      })
-        .then(res => {
-          if (!res.ok) throw new Error(`HTTP ${res.status}`)
-          toast.success('Rating deleted.')
-          this.$router.push(this.backLink)
-        })
-        .catch(err => {
-          toast.error('Delete failed: ' + err.message)
-        })
-        .finally(() => {
-          this.deleting = false
-        })
+      try {
+        await ratingApi.deleteRating(this.ratingId)
+        toast.success('Rating deleted.')
+        this.$router.push(this.backLink)
+      } catch (err) {
+        toast.error('Delete failed: ' + err.message)
+      } finally {
+        this.deleting = false
+      }
     },
     formatDate(iso) {
       if (!iso) return ''

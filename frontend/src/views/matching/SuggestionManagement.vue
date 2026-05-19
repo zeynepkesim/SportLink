@@ -41,7 +41,7 @@
 </template>
 
 <script>
-const BASE = 'http://localhost:8087/api/matching'
+import { matchingApi } from '../../api/client'
 
 export default {
   name: 'SuggestionManagement',
@@ -55,7 +55,7 @@ export default {
     }
   },
   methods: {
-    invalidate() {
+    async invalidate() {
       const id = this.suggestionId.trim()
       if (!id) return
 
@@ -63,35 +63,28 @@ export default {
       this.error = null
       this.successMessage = null
 
-      fetch(`${BASE}/suggestions/${id}`, { method: 'DELETE' })
-        .then(response => {
-          if (!response.ok) {
-            return response.json().then(data => {
-              throw new Error(data.message || 'HTTP ' + response.status)
-            })
-          }
-          this.successMessage = `Suggestion ${id} successfully invalidated.`
-          this.history.unshift({
-            id: Date.now(),
-            suggestionId: id,
-            time: new Date().toLocaleTimeString(),
-            ok: true
-          })
-          this.suggestionId = ''
+      try {
+        await matchingApi.invalidateSuggestion(id)
+        this.successMessage = `Suggestion ${id} successfully invalidated.`
+        this.history.unshift({
+          id: Date.now(),
+          suggestionId: id,
+          time: new Date().toLocaleTimeString(),
+          ok: true
         })
-        .catch(err => {
-          this.error = err.message
-          this.history.unshift({
-            id: Date.now(),
-            suggestionId: id,
-            time: new Date().toLocaleTimeString(),
-            ok: false
-          })
-          console.error(err)
+        this.suggestionId = ''
+      } catch (err) {
+        this.error = err.message
+        this.history.unshift({
+          id: Date.now(),
+          suggestionId: id,
+          time: new Date().toLocaleTimeString(),
+          ok: false
         })
-        .finally(() => {
-          this.loading = false
-        })
+        console.error(err)
+      } finally {
+        this.loading = false
+      }
     }
   }
 }
