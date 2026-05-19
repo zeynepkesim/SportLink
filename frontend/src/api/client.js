@@ -14,8 +14,13 @@ const ACCOUNT_BASE = 'http://localhost:8081'
 const MODERATION_BASE = 'http://localhost:8090'
 const INTERACTION_BASE = 'http://localhost:8084'
 const NOTIFICATION_BASE = 'http://localhost:8085'
+const RATING_BASE = 'http://localhost:8082'
+const MATCHING_BASE = 'http://localhost:8087'
+const BOOKING_BASE = 'http://localhost:8088'
+const SEARCH_BASE = 'http://localhost:8086'
 
 async function request(baseUrl, path, options = {}) {
+// ... rest of request function
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) }
   if (authState.token) {
     headers.Authorization = `Bearer ${authState.token}`
@@ -57,6 +62,7 @@ function extractMessage(body, status) {
   if (!body) {
     if (status === 401) return 'Invalid email or password.'
     if (status === 403) return 'You do not have permission to perform this action.'
+    if (status === 503) return 'A required peer service is unavailable. Try again shortly.'
     return `HTTP ${status}`
   }
   if (Array.isArray(body.details) && body.details.length) {
@@ -71,6 +77,18 @@ function safeJson(text) {
   } catch (e) {
     return null
   }
+}
+
+function buildQuery(params) {
+  const q = new URLSearchParams()
+  for (const [k, v] of Object.entries(params || {})) {
+    if (v === null || v === undefined) continue
+    const s = typeof v === 'string' ? v.trim() : String(v)
+    if (s === '') continue
+    q.append(k, s)
+  }
+  const str = q.toString()
+  return str ? '?' + str : ''
 }
 
 export const accountApi = {
@@ -177,4 +195,108 @@ export const moderationApi = {
   removeContent: (contentType, contentId) => request(MODERATION_BASE, `/api/content/${contentType}/${contentId}`, {
     method: 'DELETE'
   })
+}
+
+export const ratingApi = {
+  getRatings: (params) => {
+    const query = new URLSearchParams(params).toString()
+    return request(RATING_BASE, `/api/ratings${query ? `?${query}` : ''}`)
+  },
+  getRating: (id) => request(RATING_BASE, `/api/ratings/${id}`),
+  createRating: (body) => request(RATING_BASE, '/api/ratings', {
+    method: 'POST',
+    body: JSON.stringify(body)
+  }),
+  deleteRating: (id) => request(RATING_BASE, `/api/ratings/${id}`, {
+    method: 'DELETE'
+  }),
+  getReputation: (userId) => request(RATING_BASE, `/api/reputations/${userId}`),
+  recomputeReputation: (userId) => request(RATING_BASE, `/api/reputations/${userId}/recompute`, {
+    method: 'POST'
+  })
+}
+
+export const matchingApi = {
+  getUserSuggestions: (userId, params) => {
+    const query = new URLSearchParams(params).toString()
+    return request(MATCHING_BASE, `/api/matching/users/${userId}/suggestions?${query}`)
+  },
+  recomputeUserSuggestions: (userId, params) => {
+    const query = new URLSearchParams(params).toString()
+    return request(MATCHING_BASE, `/api/matching/users/${userId}/suggestions?${query}`, {
+      method: 'POST'
+    })
+  },
+  getActivitySuggestions: (userId, params) => {
+    const query = new URLSearchParams(params).toString()
+    return request(MATCHING_BASE, `/api/matching/activities/${userId}/suggestions?${query}`)
+  },
+  recomputeActivitySuggestions: (userId, params) => {
+    const query = new URLSearchParams(params).toString()
+    return request(MATCHING_BASE, `/api/matching/activities/${userId}/suggestions?${query}`, {
+      method: 'POST'
+    })
+  },
+  checkCompatibility: (userAId, userBId) => {
+    const query = new URLSearchParams({ userAId, userBId }).toString()
+    return request(MATCHING_BASE, `/api/matching/compatibility?${query}`)
+  },
+  invalidateSuggestion: (suggestionId) => request(MATCHING_BASE, `/api/matching/suggestions/${suggestionId}`, {
+    method: 'DELETE'
+  })
+}
+
+export const bookingApi = {
+  // GET /api/bookings?activityId=&sportCenterId=&bookingStatus=
+  list: (filters = {}) => request(BOOKING_BASE, '/api/bookings' + buildQuery(filters)),
+  // GET /api/bookings/{id}
+  get: (id) => request(BOOKING_BASE, `/api/bookings/${encodeURIComponent(id)}`),
+  // POST /api/bookings
+  create: (body) => request(BOOKING_BASE, '/api/bookings', {
+    method: 'POST',
+    body: JSON.stringify(body)
+  }),
+  // PUT /api/bookings/{id}/confirm
+  confirm: (id) => request(BOOKING_BASE, `/api/bookings/${encodeURIComponent(id)}/confirm`, {
+    method: 'PUT'
+  }),
+  // PUT /api/bookings/{id}/cancel
+  cancel: (id) => request(BOOKING_BASE, `/api/bookings/${encodeURIComponent(id)}/cancel`, {
+    method: 'PUT'
+  }),
+  // POST /api/bookings/{id}/refund
+  refund: (id) => request(BOOKING_BASE, `/api/bookings/${encodeURIComponent(id)}/refund`, {
+    method: 'POST'
+  }),
+  // GET /api/bookings/facilities/search?sportType=&location=&timeSlotId=
+  // Booking-service proxies to Search Service; returns 503 if Search is down.
+  searchFacilities: (filters = {}) => request(
+    BOOKING_BASE, '/api/bookings/facilities/search' + buildQuery(filters)
+  )
+}
+
+export const searchApi = {
+  // GET /api/search?q=&entityType=&sportType=&location=&...
+  all: (filters = {}) => request(SEARCH_BASE, '/api/search' + buildQuery(filters)),
+  // GET /api/search/users?...
+  users: (filters = {}) => request(SEARCH_BASE, '/api/search/users' + buildQuery(filters)),
+  // GET /api/search/activities?...
+  activities: (filters = {}) => request(SEARCH_BASE, '/api/search/activities' + buildQuery(filters)),
+  // GET /api/search/facilities?facilityName=&sportType=&location=&sportCenterId=
+  // sportCenterId triggers a synchronous call to the Booking Service.
+  facilities: (filters = {}) => request(SEARCH_BASE, '/api/search/facilities' + buildQuery(filters)),
+  // POST /api/search/index
+  indexEntity: (body) => request(SEARCH_BASE, '/api/search/index', {
+    method: 'POST',
+    body: JSON.stringify(body)
+  }),
+  // GET /api/search/index/{entityType}/{entityId}
+  getIndex: (entityType, entityId) => request(
+    SEARCH_BASE, `/api/search/index/${encodeURIComponent(entityType)}/${encodeURIComponent(entityId)}`
+  ),
+  // DELETE /api/search/index/{entityType}/{entityId}
+  deleteIndex: (entityType, entityId) => request(
+    SEARCH_BASE, `/api/search/index/${encodeURIComponent(entityType)}/${encodeURIComponent(entityId)}`,
+    { method: 'DELETE' }
+  )
 }

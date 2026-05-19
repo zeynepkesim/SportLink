@@ -7,6 +7,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
 import java.util.UUID;
 
 /**
@@ -28,6 +31,14 @@ public class AccountManagementClient {
         this.mock = mock;
     }
 
+    private String getAuthHeader() {
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes != null) {
+            return attributes.getRequest().getHeader("Authorization");
+        }
+        return null;
+    }
+
     /**
      * Fetch the full user profile needed for compatibility scoring.
      * Returns null if the user is not found (404).
@@ -40,9 +51,15 @@ public class AccountManagementClient {
         }
 
         try {
-            return webClient.get()
-                    .uri("/api/users/{id}", userId)
-                    .retrieve()
+            String authHeader = getAuthHeader();
+            WebClient.RequestHeadersSpec<?> request = webClient.get()
+                    .uri("/api/users/{id}", userId);
+            
+            if (authHeader != null) {
+                request = request.header("Authorization", authHeader);
+            }
+
+            return request.retrieve()
                     .bodyToMono(UserProfileDto.class)
                     .block();
         } catch (WebClientResponseException.NotFound e) {

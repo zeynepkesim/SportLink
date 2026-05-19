@@ -41,12 +41,17 @@
           <strong>Skill:</strong> {{ rating.skillValue }} / 5
           <span class="label">({{ rating.skillLabel }})</span>
         </div>
+        <div class="rating-actions">
+          <router-link :to="'/ratings/detail/' + rating.ratingId" class="view-link">View Details</router-link>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script>
+import { ratingApi } from '../../api/client'
+
 export default {
   name: 'UserRatings',
   data() {
@@ -71,7 +76,7 @@ export default {
     }
   },
   methods: {
-    fetchRatings() {
+    async fetchRatings() {
       if (!this.userId) {
         this.error = 'No user selected.'
         this.ratings = []
@@ -82,24 +87,14 @@ export default {
       this.error = null
       this.ratings = []
 
-      const query = new URLSearchParams({ revieweeId: this.userId }).toString()
-      fetch(`http://localhost:8082/api/ratings?${query}`)
-        .then(response => {
-          if (!response.ok) {
-            throw new Error('Failed to load ratings (HTTP ' + response.status + ')')
-          }
-          return response.json()
-        })
-        .then(data => {
-          this.ratings = data
-        })
-        .catch(err => {
-          this.error = err.message
-          console.error(err)
-        })
-        .finally(() => {
-          this.loading = false
-        })
+      try {
+        this.ratings = await ratingApi.getRatings({ revieweeId: this.userId })
+      } catch (err) {
+        this.error = err.message
+        console.error(err)
+      } finally {
+        this.loading = false
+      }
     },
     formatDate(value) {
       if (!value) return ''
@@ -180,6 +175,21 @@ export default {
 
 .rating-row {
   margin-bottom: 8px;
+}
+
+.rating-actions {
+  margin-top: 16px;
+}
+
+.view-link {
+  color: #3498db;
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 0.9em;
+}
+
+.view-link:hover {
+  text-decoration: underline;
 }
 
 .label {

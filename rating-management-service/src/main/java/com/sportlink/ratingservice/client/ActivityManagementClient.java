@@ -7,6 +7,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
 import lombok.extern.slf4j.Slf4j;
 
 @Component
@@ -25,6 +28,14 @@ public class ActivityManagementClient {
         this.activityManagementUrl = activityManagementUrl;
     }
 
+    private String getAuthHeader() {
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes != null) {
+            return attributes.getRequest().getHeader("Authorization");
+        }
+        return null;
+    }
+
     public boolean bothParticipatedAndActivityCompleted(UUID activityId, UUID reviewerId, UUID revieweeId) {
         if (mock) {
             log.debug("Mock mode: assuming activity {} is completed and both users {} and {} participated", activityId, reviewerId, revieweeId);
@@ -32,10 +43,16 @@ public class ActivityManagementClient {
         }
 
         try {
-            ActivityDto activity = webClientBuilder.build()
+            String authHeader = getAuthHeader();
+            WebClient.RequestHeadersSpec<?> request = webClientBuilder.build()
                     .get()
-                    .uri(activityManagementUrl + "/api/activities/{id}", activityId)
-                    .retrieve()
+                    .uri(activityManagementUrl + "/api/activities/{id}", activityId);
+            
+            if (authHeader != null) {
+                request = request.header("Authorization", authHeader);
+            }
+
+            ActivityDto activity = request.retrieve()
                     .bodyToMono(ActivityDto.class)
                     .block();
 

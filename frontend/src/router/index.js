@@ -26,12 +26,14 @@ import AllBookings from '../views/bookings/AllBookings.vue'
 import CreateBooking from '../views/bookings/CreateBooking.vue'
 import BookingFacilitySearch from '../views/bookings/BookingFacilitySearch.vue'
 import AdminRatings from '../views/ratings/AdminRatings.vue'
+import RatingDetail from '../views/ratings/RatingDetail.vue'
 import ActivityDetail from '../views/activities/ActivityDetail.vue'
 import UserAvailability from '../views/scheduling/UserAvailability.vue'
 import ResolveSlots from '../views/scheduling/ResolveSlots.vue'
 import ActivitySuggestion from '../views/matching/ActivitySuggestion.vue'
 import CompatibilityCheck from '../views/matching/CompatibilityCheck.vue'
 import SuggestionManagement from '@/views/matching/SuggestionManagement.vue'
+import IndexEntity from '../views/search/IndexEntity.vue'
 
 
 const routes = [
@@ -151,6 +153,11 @@ const routes = [
     component: AdminRatings
   },
   {
+    path: '/ratings/detail/:ratingId',
+    name: 'RatingDetail',
+    component: RatingDetail
+  },
+  {
     path: '/matching/management',
     name: 'SuggestionManagement',
     component: SuggestionManagement
@@ -189,7 +196,11 @@ const routes = [
     name: 'IndexEntry',
     component: IndexEntry
   },
-
+  {
+    path: '/search/index/new',
+    name: 'IndexEntity',
+    component: IndexEntity
+  },
   {
     path: '/bookings',
     name: 'AllBookings',
