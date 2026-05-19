@@ -106,6 +106,7 @@
 
 <script>
 import { accountApi, ratingApi } from '../../api/client'
+// eslint-disable-next-line no-unused-vars
 import { authState, authState as authStore } from '../../store/authStore'
 import { toast } from '../../store/toastStore'
 import Spinner from '../../components/Spinner.vue'
