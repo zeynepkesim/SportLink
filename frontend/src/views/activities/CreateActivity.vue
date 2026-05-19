@@ -23,8 +23,18 @@
       <label>Description (optional)</label>
       <input v-model="form.description" placeholder="Casual weekend game" />
 
-      <label>Preferred Time Slot ID (optional — triggers Scheduling reservation)</label>
-      <input v-model="form.preferredTimeSlotId" placeholder="11111111-1111-1111-1111-111111111111" />
+      <label>Preferred Time Slot (optional — reserves it via Scheduling)</label>
+      <select v-model="form.preferredTimeSlotId" :disabled="loadingSlots">
+        <option value="">— No time slot —</option>
+        <option v-for="s in availableSlots" :key="s.slotId" :value="s.slotId">
+          {{ formatSlotLabel(s) }}
+        </option>
+      </select>
+      <p v-if="loadingSlots" class="muted">Loading available slots…</p>
+      <p v-else-if="availableSlots.length === 0" class="muted">
+        No available slots yet — create one via the
+        <router-link to="/slots/reserve">Scheduling page</router-link>.
+      </p>
 
       <button @click="submit" :disabled="loading || !canSubmit">
         {{ loading ? 'Creating…' : 'Create Activity' }}
@@ -42,7 +52,7 @@
 </template>
 
 <script>
-import { activityApi } from '../../api/client'
+import { activityApi, schedulingApi } from '../../api/client'
 import { authState } from '../../store/authStore'
 
 export default {
@@ -57,6 +67,8 @@ export default {
         description: '',
         preferredTimeSlotId: ''
       },
+      availableSlots: [],
+      loadingSlots: false,
       loading: false,
       error: null,
       success: false
@@ -68,6 +80,28 @@ export default {
     }
   },
   methods: {
+    async fetchSlots() {
+      this.loadingSlots = true
+      try {
+        this.availableSlots = await schedulingApi.listAvailable()
+      } catch (err) {
+        // No fatal — user can still create activity without a slot
+        this.availableSlots = []
+      } finally {
+        this.loadingSlots = false
+      }
+    },
+
+    formatSlotLabel(slot) {
+      const start = new Date(slot.startTime).toLocaleString('en-GB', {
+        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+      })
+      const end = new Date(slot.endTime).toLocaleString('en-GB', {
+        hour: '2-digit', minute: '2-digit'
+      })
+      return `${start} → ${end}`
+    },
+
     async submit() {
       this.error = null
       this.success = false
@@ -95,6 +129,9 @@ export default {
         this.loading = false
       }
     }
+  },
+  mounted() {
+    if (this.authState.token) this.fetchSlots()
   }
 }
 </script>
@@ -129,7 +166,7 @@ label {
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
-input {
+input, select {
   display: block;
   width: 100%;
   padding: 10px;
@@ -137,10 +174,17 @@ input {
   border: 1px solid #d5dde0;
   border-radius: 6px;
   font-size: 0.95em;
+  background: white;
 }
-input:focus {
+input:focus, select:focus {
   outline: none;
   border-color: #42b983;
+}
+.muted {
+  color: #999;
+  font-size: 0.85em;
+  margin: 6px 0 0;
+  font-style: italic;
 }
 button {
   background: #42b983;
