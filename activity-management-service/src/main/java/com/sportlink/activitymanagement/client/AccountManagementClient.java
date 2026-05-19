@@ -10,6 +10,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import com.sportlink.activitymanagement.dto.UserDto;
 import com.sportlink.activitymanagement.exception.UserNotValidException;
 
+
 import lombok.extern.slf4j.Slf4j;
 
 @Component
@@ -19,13 +20,16 @@ public class AccountManagementClient {
     private final WebClient.Builder webClientBuilder;
     private final boolean mock;
     private final String accountServiceUrl;
+    private final com.sportlink.activitymanagement.security.AuthContext authContext;
 
     public AccountManagementClient(WebClient.Builder webClientBuilder,
                                    @Value("${sportlink.mock.dependencies:true}") boolean mock,
-                                   @Value("${sportlink.services.account-management.url:http://localhost:8081}") String accountServiceUrl) {
+                                   @Value("${sportlink.services.account-management.url:http://localhost:8081}") String accountServiceUrl,
+                                   com.sportlink.activitymanagement.security.AuthContext authContext) {
         this.webClientBuilder = webClientBuilder;
         this.mock = mock;
         this.accountServiceUrl = accountServiceUrl;
+        this.authContext = authContext; 
     }
 
     
@@ -44,6 +48,10 @@ public class AccountManagementClient {
             return webClientBuilder.build()
                     .get()
                     .uri(accountServiceUrl + "/api/users/{id}", userId)
+                    .headers(h -> {
+                        String bearer = authContext.currentBearerTokenOrNull();
+                        if (bearer != null) h.set("Authorization", bearer);
+                    })
                     .retrieve()
                     .bodyToMono(UserDto.class)
                     .block();
