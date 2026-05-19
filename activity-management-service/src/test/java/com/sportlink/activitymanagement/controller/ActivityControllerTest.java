@@ -32,7 +32,20 @@ import com.sportlink.activitymanagement.service.ActivityService;
  *    one error case test
  *    tested endpoint depends on another component (AccountManagementClient) that is mocked
  */
-@WebMvcTest(ActivityController.class)
+@WebMvcTest(value = ActivityController.class,
+        excludeAutoConfiguration = {
+            org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration.class,
+            org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration.class
+        },
+        excludeFilters = @org.springframework.context.annotation.ComponentScan.Filter(
+            type = org.springframework.context.annotation.FilterType.ASSIGNABLE_TYPE,
+            classes = {
+                com.sportlink.activitymanagement.security.SecurityConfig.class,
+                com.sportlink.activitymanagement.security.JwtAuthenticationFilter.class,
+                com.sportlink.activitymanagement.security.JwtAuthenticationEntryPoint.class,
+                com.sportlink.activitymanagement.security.JwtTokenVerifier.class,
+                com.sportlink.activitymanagement.security.JwtProperties.class
+            }))
 class ActivityControllerTest {
 
     @Autowired
