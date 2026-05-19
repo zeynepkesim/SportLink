@@ -56,7 +56,7 @@
       </section>
 
       <!-- ============ EDIT ============ -->
-      <section v-if="activity.status === 'PLANNED' || activity.status === 'ACTIVE'">
+      <section v-if="canEdit">
         <h3>Edit Activity</h3>
         <label>Title</label>
         <input v-model="editForm.title" />
@@ -97,13 +97,13 @@
             <small class="joined-at">joined {{ formatDate(p.joinedAt) }}</small>
             <div class="participant-actions">
               <button
-                v-if="activity.status === 'COMPLETED' && p.userId !== participantUserId"
+                v-if="activity.status === 'COMPLETED' && p.userId !== currentUserId"
                 class="btn-secondary small"
                 @click="toggleRating(p.userId)">
                 {{ ratingForUserId === p.userId ? 'Cancel Rating' : 'Rate' }}
               </button>
               <button
-                v-if="p.role !== 'ORGANIZER' && activity.status !== 'COMPLETED'"
+                v-if="canRemoveParticipant(p)"
                 class="btn-danger small"
                 @click="removeParticipant(p.userId)">
                 Remove
@@ -117,39 +117,51 @@
       <section v-if="activity.status === 'COMPLETED' && ratingForUserId">
         <h3>Rate Participant: {{ profileFor(ratingForUserId)?.name || ratingForUserId }}</h3>
         <p class="muted">You are rating this user for their performance in "{{ activity.title }}"</p>
-        
-        <div class="manual-reviewer">
-          <label>Your User ID (Reviewer)</label>
-          <input v-model="participantUserId" placeholder="Enter your User UUID" />
-        </div>
 
-        <LeaveRating 
-          v-if="participantUserId"
+        <LeaveRating
+          v-if="currentUserId"
           :activityId="activityId"
-          :reviewerId="participantUserId"
+          :reviewerId="currentUserId"
           :revieweeId="ratingForUserId"
           @rating-submitted="onRatingSubmitted"
         />
-        <p v-else class="error-msg">Please enter your User ID above to leave a rating.</p>
+        <p v-else class="error-msg">You must be logged in to leave a rating.</p>
       </section>
 
       <!-- ============ JOIN/LEAVE ============ -->
       <section v-if="activity.status === 'PLANNED' || activity.status === 'ACTIVE'">
         <h3>Join / Leave</h3>
-        <label>User ID</label>
-        <input v-model="participantUserId" placeholder="UUID of user" />
-        <div class="actions">
-          <button class="btn-primary" @click="joinActivity" :disabled="actionLoading">
-            Join as this user
-          </button>
-          <button class="btn-secondary" @click="leaveActivity" :disabled="actionLoading">
-            Leave as this user
-          </button>
+        <p class="muted" v-if="!currentUserId">
+          You must be logged in to join an activity.
+        </p>
+        <div v-else>
+          <p class="muted">
+            Acting as <b>{{ authState.email || currentUserId }}</b>
+          </p>
+          <div class="actions">
+            <button
+              v-if="!isParticipant"
+              class="btn-primary"
+              @click="joinActivity"
+              :disabled="actionLoading">
+              Join
+            </button>
+            <button
+              v-if="isParticipant && !isCurrentUserOrganizer"
+              class="btn-secondary"
+              @click="leaveActivity"
+              :disabled="actionLoading">
+              Leave
+            </button>
+            <span v-if="isCurrentUserOrganizer" class="muted">
+              You are the organizer of this activity.
+            </span>
+          </div>
         </div>
       </section>
 
       <!-- ============ CANCEL ============ -->
-      <section v-if="activity.status !== 'CANCELLED' && activity.status !== 'COMPLETED'" class="danger-zone">
+      <section v-if="canCancel" class="danger-zone">
         <h3>Danger Zone</h3>
         <button class="btn-danger" @click="cancelActivity" :disabled="actionLoading">
           {{ actionLoading ? 'Cancelling…' : 'Cancel This Activity' }}
@@ -169,14 +181,15 @@
 
 <script>
 import LeaveRating from '@/views/ratings/LeaveRating.vue'
+import { activityApi, accountApi } from '../../api/client'
+import { authState } from '../../store/authStore'
 
 export default {
   name: 'ActivityDetail',
-  components: {
-    LeaveRating
-  },
+  components: { LeaveRating },
   data() {
     return {
+      authState,
       activityId: this.$route.params.id,
       activity: null,
       organizer: null,
@@ -186,8 +199,7 @@ export default {
       actionLoading: false,
       error: null,
       success: null,
-      participantUserId: '',
-      ratingForUserId: null, // Track which user is being rated
+      ratingForUserId: null, // which user is being rated
       editForm: {
         title: '',
         description: '',
@@ -196,77 +208,98 @@ export default {
       }
     }
   },
-  methods: {
-    // ... rest of methods
-    toggleRating(userId) {
-      if (this.ratingForUserId === userId) {
-        this.ratingForUserId = null
-      } else {
-        this.ratingForUserId = userId
-      }
+  computed: {
+    currentUserId() {
+      return this.authState.accountId
     },
+    isModerator() {
+      return this.authState.role === 'MODERATOR'
+    },
+    isCurrentUserOrganizer() {
+      return this.activity && this.activity.organizerId === this.currentUserId
+    },
+    isParticipant() {
+      if (!this.activity || !this.currentUserId) return false
+      return this.activity.participants.some(p => p.userId === this.currentUserId)
+    },
+    canEdit() {
+      if (!this.activity) return false
+      if (this.activity.status !== 'PLANNED' && this.activity.status !== 'ACTIVE') return false
+      return this.isCurrentUserOrganizer || this.isModerator
+    },
+    canCancel() {
+      if (!this.activity) return false
+      if (this.activity.status === 'CANCELLED' || this.activity.status === 'COMPLETED') return false
+      return this.isCurrentUserOrganizer || this.isModerator
+    }
+  },
+  methods: {
+    canRemoveParticipant(p) {
+      if (!this.activity) return false
+      if (this.activity.status === 'COMPLETED') return false
+      if (p.role === 'ORGANIZER') return false
+      return this.isCurrentUserOrganizer || this.isModerator
+    },
+
+    toggleRating(userId) {
+      this.ratingForUserId = this.ratingForUserId === userId ? null : userId
+    },
+
     onRatingSubmitted() {
       this.success = 'Rating submitted successfully!'
       this.ratingForUserId = null
     },
-    fetchActivity() {
+
+    async fetchActivity() {
       this.loading = true
       this.error = null
-      fetch(`http://localhost:8083/api/activities/${this.activityId}`)
-        .then(async r => {
-          if (!r.ok) {
-            const err = await r.json().catch(() => ({}))
-            throw new Error(err.message || `HTTP ${r.status}`)
-          }
-          return r.json()
-        })
-        .then(data => {
-          this.activity = data
-          this.editForm.title = data.title || ''
-          this.editForm.description = data.description || ''
-          this.editForm.maxParticipants = data.maxParticipants || 1
-          this.editForm.preferredTimeSlotId = data.preferredTimeSlotId || ''
+      try {
+        const data = await activityApi.get(this.activityId)
+        this.activity = data
+        this.editForm.title = data.title || ''
+        this.editForm.description = data.description || ''
+        this.editForm.maxParticipants = data.maxParticipants || 1
+        this.editForm.preferredTimeSlotId = data.preferredTimeSlotId || ''
 
-          // Fetch profiles in parallel
-          this.fetchOrganizer(data.organizerId)
-          for (const p of data.participants) {
-            this.fetchProfile(p.userId)
-          }
-        })
-        .catch(err => {
-          this.error = err.message
-        })
-        .finally(() => {
-          this.loading = false
-        })
+        // Fetch organizer + participants profiles in parallel
+        this.fetchOrganizer(data.organizerId)
+        for (const p of data.participants) {
+          this.fetchProfile(p.userId)
+        }
+      } catch (err) {
+        if (!err.silent) this.error = err.message
+      } finally {
+        this.loading = false
+      }
     },
 
-    fetchOrganizer(userId) {
+    async fetchOrganizer(userId) {
       this.loadingOrganizer = true
-      this.fetchProfile(userId)
-        .then(profile => { this.organizer = profile })
-        .finally(() => { this.loadingOrganizer = false })
+      try {
+        this.organizer = await this.fetchProfile(userId)
+      } finally {
+        this.loadingOrganizer = false
+      }
     },
 
-    // Cached fetch — never call Account Management twice for the same user
-    fetchProfile(userId) {
-      if (this.profiles[userId]) return Promise.resolve(this.profiles[userId])
-      return fetch(`http://localhost:8081/api/users/${userId}`)
-        .then(r => r.ok ? r.json() : null)
-        .then(profile => {
-          if (profile) {
-            this.profiles = { ...this.profiles, [userId]: profile }
-          }
-          return profile
-        })
-        .catch(() => null)
+    async fetchProfile(userId) {
+      if (this.profiles[userId]) return this.profiles[userId]
+      try {
+        const profile = await accountApi.getUser(userId)
+        if (profile) {
+          this.profiles = { ...this.profiles, [userId]: profile }
+        }
+        return profile
+      } catch (err) {
+        return null
+      }
     },
 
     profileFor(userId) {
       return this.profiles[userId]
     },
 
-    updateActivity() {
+    async updateActivity() {
       this.actionLoading = true
       this.error = null
       this.success = null
@@ -278,126 +311,86 @@ export default {
       if (this.editForm.preferredTimeSlotId) {
         body.preferredTimeSlotId = this.editForm.preferredTimeSlotId
       }
-      fetch(`http://localhost:8083/api/activities/${this.activityId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      })
-        .then(async r => {
-          if (!r.ok) {
-            const err = await r.json().catch(() => ({}))
-            throw new Error(err.message || `HTTP ${r.status}`)
-          }
-          return r.json()
-        })
-        .then(() => {
-          this.success = 'Activity updated.'
-          this.fetchActivity()
-        })
-        .catch(err => { this.error = err.message })
-        .finally(() => { this.actionLoading = false })
+      try {
+        await activityApi.update(this.activityId, body)
+        this.success = 'Activity updated.'
+        await this.fetchActivity()
+      } catch (err) {
+        if (!err.silent) this.error = err.message
+      } finally {
+        this.actionLoading = false
+      }
     },
 
-    cancelActivity() {
+    async cancelActivity() {
       if (!confirm('Are you sure you want to cancel this activity?')) return
       this.actionLoading = true
       this.error = null
       this.success = null
-      fetch(`http://localhost:8083/api/activities/${this.activityId}`, {
-        method: 'DELETE'
-      })
-        .then(async r => {
-          if (!r.ok && r.status !== 204) {
-            const err = await r.json().catch(() => ({}))
-            throw new Error(err.message || `HTTP ${r.status}`)
-          }
-        })
-        .then(() => {
-          this.success = 'Activity cancelled. Reserved slot will be released via Kafka.'
-          this.fetchActivity()
-        })
-        .catch(err => { this.error = err.message })
-        .finally(() => { this.actionLoading = false })
+      try {
+        await activityApi.cancel(this.activityId)
+        this.success = 'Activity cancelled. Reserved slot will be released via Kafka.'
+        await this.fetchActivity()
+      } catch (err) {
+        if (!err.silent) this.error = err.message
+      } finally {
+        this.actionLoading = false
+      }
     },
 
-    joinActivity() {
-      if (!this.participantUserId) {
-        this.error = 'Please enter a user ID first.'
+    async joinActivity() {
+      if (!this.currentUserId) {
+        this.error = 'You must be logged in.'
         return
       }
       this.actionLoading = true
       this.error = null
       this.success = null
-      fetch(`http://localhost:8083/api/activities/${this.activityId}/join`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: this.participantUserId })
-      })
-        .then(async r => {
-          if (!r.ok) {
-            const err = await r.json().catch(() => ({}))
-            throw new Error(err.message || `HTTP ${r.status}`)
-          }
-          return r.json()
-        })
-        .then(() => {
-          this.success = `User joined.`
-          this.participantUserId = ''
-          this.fetchActivity()
-        })
-        .catch(err => { this.error = err.message })
-        .finally(() => { this.actionLoading = false })
+      try {
+        await activityApi.join(this.activityId, this.currentUserId)
+        this.success = `Joined successfully.`
+        await this.fetchActivity()
+      } catch (err) {
+        if (!err.silent) this.error = err.message
+      } finally {
+        this.actionLoading = false
+      }
     },
 
-    leaveActivity() {
-      if (!this.participantUserId) {
-        this.error = 'Please enter a user ID first.'
+    async leaveActivity() {
+      if (!this.currentUserId) {
+        this.error = 'You must be logged in.'
         return
       }
       this.actionLoading = true
       this.error = null
       this.success = null
-      fetch(`http://localhost:8083/api/activities/${this.activityId}/leave`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: this.participantUserId })
-      })
-        .then(async r => {
-          if (!r.ok && r.status !== 204) {
-            const err = await r.json().catch(() => ({}))
-            throw new Error(err.message || `HTTP ${r.status}`)
-          }
-        })
-        .then(() => {
-          this.success = `User left.`
-          this.participantUserId = ''
-          this.fetchActivity()
-        })
-        .catch(err => { this.error = err.message })
-        .finally(() => { this.actionLoading = false })
+      try {
+        await activityApi.leave(this.activityId, this.currentUserId)
+        this.success = `Left successfully.`
+        await this.fetchActivity()
+      } catch (err) {
+        if (!err.silent) this.error = err.message
+      } finally {
+        this.actionLoading = false
+      }
     },
 
-    removeParticipant(userId) {
+    async removeParticipant(userId) {
       const name = this.profileFor(userId)?.name || userId
       if (!confirm(`Remove participant ${name}?`)) return
       this.actionLoading = true
       this.error = null
       this.success = null
-      fetch(`http://localhost:8083/api/activities/${this.activityId}/participants/${userId}`, {
-        method: 'DELETE'
-      })
-        .then(async r => {
-          if (!r.ok && r.status !== 204) {
-            const err = await r.json().catch(() => ({}))
-            throw new Error(err.message || `HTTP ${r.status}`)
-          }
-        })
-        .then(() => {
-          this.success = `Participant removed.`
-          this.fetchActivity()
-        })
-        .catch(err => { this.error = err.message })
-        .finally(() => { this.actionLoading = false })
+      try {
+        await activityApi.removeParticipant(this.activityId, userId)
+        this.success = `Participant removed.`
+        await this.fetchActivity()
+      } catch (err) {
+        if (!err.silent) this.error = err.message
+      } finally {
+        this.actionLoading = false
+      }
     },
 
     formatDate(iso) {
@@ -499,6 +492,7 @@ input {
   display: flex;
   gap: 10px;
   margin-top: 12px;
+  align-items: center;
 }
 button {
   background: #42b983;
@@ -535,18 +529,9 @@ button.small { padding: 4px 10px; font-size: 0.8em; margin-top: 0; }
 .error { background: #fadbd8; color: #c0392b; }
 .success { background: #d4efdf; color: #196f3d; }
 .loading { text-align: center; padding: 30px; }
-
-/* Rating Styles */
 .participant-actions {
   display: flex;
   gap: 8px;
-}
-.manual-reviewer {
-  margin-bottom: 20px;
-  background: #fff;
-  padding: 15px;
-  border-radius: 8px;
-  border: 1px solid #d5dde0;
 }
 .error-msg {
   color: #e74c3c;

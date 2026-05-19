@@ -85,6 +85,7 @@ function safeJson(text) {
   }
 }
 
+/* eslint-disable */
 function buildQuery(params) {
   const q = new URLSearchParams()
   for (const [k, v] of Object.entries(params || {})) {

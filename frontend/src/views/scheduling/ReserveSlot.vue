@@ -2,42 +2,58 @@
   <div class="form">
     <h2>Reserve a Time Slot</h2>
 
-    <label>Start Time (ISO format)</label>
-    <input v-model="form.startTime" placeholder="2026-05-20T14:00:00" />
+    <p class="hint">
+      Usually slots are reserved automatically when you create an activity
+      with a <i>preferredTimeSlotId</i>. This page is for direct testing
+      against Scheduling Service.
+    </p>
 
-    <label>End Time (ISO format)</label>
-    <input v-model="form.endTime" placeholder="2026-05-20T15:30:00" />
-
-    <label>Organizer ID (UUID)</label>
-    <input v-model="form.organizerId" placeholder="11111111-1111-1111-1111-111111111111" />
-
-    <label>Reserved For ID (UUID — activity or booking)</label>
-    <input v-model="form.reservedForId" placeholder="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" />
-
-    <button @click="submit" :disabled="loading">
-      {{ loading ? 'Reserving…' : 'Reserve Slot' }}
-    </button>
-
-    <div v-if="error" class="error">
-      <p><b>Error:</b> {{ error }}</p>
+    <div v-if="!authState.token" class="error">
+      <p>You must be <router-link to="/account/login">logged in</router-link> to reserve a slot.</p>
     </div>
 
-    <div v-if="result" class="success">
-      <p>✓ Slot reserved!</p>
-      <p><small><b>Slot ID:</b> {{ result.slotId }}</small></p>
-    </div>
+    <template v-else>
+      <div class="organizer-info">
+        <small><b>Organizer:</b> {{ authState.email || authState.accountId }}</small>
+      </div>
+
+      <label>Start Time (ISO format)</label>
+      <input v-model="form.startTime" placeholder="2026-05-20T14:00:00" />
+
+      <label>End Time (ISO format)</label>
+      <input v-model="form.endTime" placeholder="2026-05-20T15:30:00" />
+
+      <label>Reserved For ID (UUID of an activity or booking)</label>
+      <input v-model="form.reservedForId" placeholder="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" />
+
+      <button @click="submit" :disabled="loading || !canSubmit">
+        {{ loading ? 'Reserving…' : 'Reserve Slot' }}
+      </button>
+
+      <div v-if="error" class="error">
+        <p><b>Error:</b> {{ error }}</p>
+      </div>
+
+      <div v-if="result" class="success">
+        <p>✓ Slot reserved!</p>
+        <p><small><b>Slot ID:</b> {{ result.slotId }}</small></p>
+      </div>
+    </template>
   </div>
 </template>
 
 <script>
+import { schedulingApi } from '../../api/client'
+import { authState } from '../../store/authStore'
+
 export default {
   name: 'ReserveSlot',
   data() {
     return {
+      authState,
       form: {
         startTime: '',
         endTime: '',
-        organizerId: '',
         reservedForId: ''
       },
       loading: false,
@@ -45,33 +61,31 @@ export default {
       result: null
     }
   },
+  computed: {
+    canSubmit() {
+      return this.form.startTime && this.form.endTime && this.form.reservedForId
+    }
+  },
   methods: {
-    submit() {
+    async submit() {
       this.error = null
       this.result = null
       this.loading = true
 
-      fetch('http://localhost:8089/api/timeslots/reserve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(this.form)
-      })
-        .then(async response => {
-          if (!response.ok) {
-            const err = await response.json().catch(() => ({}))
-            throw new Error(err.message || 'HTTP ' + response.status)
-          }
-          return response.json()
-        })
-        .then(data => {
-          this.result = data
-        })
-        .catch(err => {
-          this.error = err.message
-        })
-        .finally(() => {
-          this.loading = false
-        })
+      const body = {
+        startTime: this.form.startTime,
+        endTime: this.form.endTime,
+        organizerId: this.authState.accountId,
+        reservedForId: this.form.reservedForId
+      }
+
+      try {
+        this.result = await schedulingApi.reserve(body)
+      } catch (err) {
+        if (!err.silent) this.error = err.message
+      } finally {
+        this.loading = false
+      }
     }
   }
 }
@@ -90,6 +104,21 @@ export default {
 h2 {
   color: #2c3e50;
   text-align: center;
+}
+.hint {
+  background: #fff7e6;
+  color: #7a5a00;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 0.85em;
+  border-left: 3px solid #f39c12;
+}
+.organizer-info {
+  background: #eaf3fa;
+  color: #1f618d;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-top: 10px;
 }
 label {
   display: block;
