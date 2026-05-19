@@ -9,6 +9,7 @@ import AccountRegister from '../views/account/Register.vue'
 import UserProfile from '../views/account/UserProfile.vue'
 import UpdateUserStatus from '../views/account/UpdateUserStatus.vue'
 import SportCenter from '../views/account/SportCenter.vue'
+import AllUsers from '../views/account/AllUsers.vue'
 import ModerationCases from '../views/moderation/Cases.vue'
 import CreateCase from '../views/moderation/CreateCase.vue'
 import CaseDetail from '../views/moderation/CaseDetail.vue'
@@ -97,6 +98,11 @@ const routes = [
     path: '/account/sport-center',
     name: 'SportCenter',
     component: SportCenter
+  },
+  {
+    path: '/account/users',
+    name: 'AllUsers',
+    component: AllUsers
   },
   {
     path: '/moderation/cases',

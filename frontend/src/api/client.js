@@ -12,6 +12,8 @@ import router from '../router'
 
 const ACCOUNT_BASE = 'http://localhost:8081'
 const MODERATION_BASE = 'http://localhost:8090'
+const INTERACTION_BASE = 'http://localhost:8084'
+const NOTIFICATION_BASE = 'http://localhost:8085'
 
 async function request(baseUrl, path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) }
@@ -84,6 +86,7 @@ export const accountApi = {
     method: 'POST',
     body: JSON.stringify(body)
   }),
+  listUsers: (page = 0, size = 20) => request(ACCOUNT_BASE, `/api/users?page=${page}&size=${size}`),
   getUser: (id) => request(ACCOUNT_BASE, `/api/users/${id}`),
   updateUser: (id, body) => request(ACCOUNT_BASE, `/api/users/${id}`, {
     method: 'PUT',
@@ -98,6 +101,54 @@ export const accountApi = {
     method: 'PUT',
     body: JSON.stringify(body)
   })
+}
+
+// Interaction service uses X-User-Id header (not JWT) for identity
+function interactionRequest(path, options = {}, userId) {
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) }
+  if (userId) headers['X-User-Id'] = userId
+  return fetch(INTERACTION_BASE + path, { ...options, headers })
+    .then(async r => {
+      const text = await r.text()
+      const body = text ? safeJson(text) : null
+      if (!r.ok && r.status !== 204) throw new Error(body?.message || `HTTP ${r.status}`)
+      return body
+    })
+}
+
+export const interactionApi = {
+  followUser: (myId, targetUserId) =>
+    interactionRequest('/api/follows', {
+      method: 'POST',
+      body: JSON.stringify({ targetUserId })
+    }, myId),
+  unfollowUser: (myId, targetUserId) =>
+    interactionRequest(`/api/follows/${targetUserId}`, { method: 'DELETE' }, myId),
+  isFollowing: (myId, targetUserId) =>
+    interactionRequest(`/api/follows/check/${targetUserId}`, {}, myId),
+  getFollowing: (userId, size = 500) =>
+    interactionRequest(`/api/users/${userId}/following?size=${size}`, {})
+}
+
+function notificationRequest(path, options = {}, userId) {
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) }
+  if (userId) headers['X-User-Id'] = userId
+  return fetch(NOTIFICATION_BASE + path, { ...options, headers })
+    .then(async r => {
+      const text = await r.text()
+      const body = text ? safeJson(text) : null
+      if (!r.ok && r.status !== 204) throw new Error(body?.message || `HTTP ${r.status}`)
+      return body
+    })
+}
+
+export const notificationApi = {
+  getInbox: (userId, page = 0, size = 20) =>
+    notificationRequest(`/api/notifications?page=${page}&size=${size}`, {}, userId),
+  markRead: (userId, notificationId) =>
+    notificationRequest(`/api/notifications/${notificationId}/read`, { method: 'PATCH' }, userId),
+  markAllRead: (userId) =>
+    notificationRequest('/api/notifications/read-all', { method: 'POST' }, userId)
 }
 
 export const moderationApi = {

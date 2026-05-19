@@ -62,6 +62,11 @@ public class FollowService {
     }
 
     @Transactional(readOnly = true)
+    public boolean isFollowing(UUID followerId, UUID followeeId) {
+        return followRepository.existsByFollowerIdAndFolloweeId(followerId, followeeId);
+    }
+
+    @Transactional(readOnly = true)
     public Page<UserSummaryResponse> getFollowers(UUID userId, Pageable pageable) {
         return followRepository.findByFolloweeId(userId, pageable)
                 .map(f -> UserSummaryResponse.builder()
