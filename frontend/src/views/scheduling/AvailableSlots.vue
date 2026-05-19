@@ -88,6 +88,8 @@
 </template>
 
 <script>
+import { schedulingApi, accountApi, activityApi } from '../../api/client'
+
 export default {
   name: 'AvailableSlots',
   data() {
@@ -106,66 +108,57 @@ export default {
     filter() { this.fetchSlots() }
   },
   methods: {
-    fetchSlots() {
+    async fetchSlots() {
       this.loading = true
       this.error = null
-      const url = this.filter === 'available'
-        ? 'http://localhost:8089/api/timeslots/available'
-        : 'http://localhost:8089/api/timeslots'
+      try {
+        const data = this.filter === 'available'
+          ? await schedulingApi.listAvailable()
+          : await schedulingApi.listAll()
 
-      fetch(url)
-        .then(async r => {
-          if (!r.ok) {
-            const err = await r.json().catch(() => ({}))
-            throw new Error(err.message || `HTTP ${r.status}`)
-          }
-          return r.json()
-        })
-        .then(data => {
-          this.slots = data
-          // Pre-fetch profiles
-          const uniqueOrganizers = [...new Set(
-            data.filter(s => s.organizerId).map(s => s.organizerId)
-          )]
-          uniqueOrganizers.forEach(id => this.fetchProfile(id))
+        this.slots = data
 
-          // Pre-fetch activities (for RESERVED slots)
-          const uniqueActivities = [...new Set(
-            data.filter(s => s.reservedForId).map(s => s.reservedForId)
-          )]
-          uniqueActivities.forEach(id => this.fetchActivity(id))
-        })
-        .catch(err => {
-          this.error = err.message
-          console.error(err)
-        })
-        .finally(() => {
-          this.loading = false
-        })
+        // Pre-fetch organizer profiles in parallel
+        const uniqueOrganizers = [...new Set(
+          data.filter(s => s.organizerId).map(s => s.organizerId)
+        )]
+        uniqueOrganizers.forEach(id => this.fetchProfile(id))
+
+        // Pre-fetch activities (for RESERVED slots)
+        const uniqueActivities = [...new Set(
+          data.filter(s => s.reservedForId).map(s => s.reservedForId)
+        )]
+        uniqueActivities.forEach(id => this.fetchActivity(id))
+      } catch (err) {
+        if (!err.silent) this.error = err.message
+        console.error(err)
+      } finally {
+        this.loading = false
+      }
     },
 
-    fetchProfile(userId) {
+    async fetchProfile(userId) {
       if (this.profiles[userId]) return
-      fetch(`http://localhost:8081/api/users/${userId}`)
-        .then(r => r.ok ? r.json() : null)
-        .then(profile => {
-          if (profile) {
-            this.profiles = { ...this.profiles, [userId]: profile }
-          }
-        })
-        .catch(() => { /* silently fall back */ })
+      try {
+        const profile = await accountApi.getUser(userId)
+        if (profile) {
+          this.profiles = { ...this.profiles, [userId]: profile }
+        }
+      } catch (err) {
+        // silently fall back
+      }
     },
 
-    fetchActivity(activityId) {
+    async fetchActivity(activityId) {
       if (this.activities[activityId]) return
-      fetch(`http://localhost:8083/api/activities/${activityId}`)
-        .then(r => r.ok ? r.json() : null)
-        .then(activity => {
-          if (activity) {
-            this.activities = { ...this.activities, [activityId]: activity }
-          }
-        })
-        .catch(() => { /* slot might reference deleted/unknown activity */ })
+      try {
+        const activity = await activityApi.get(activityId)
+        if (activity) {
+          this.activities = { ...this.activities, [activityId]: activity }
+        }
+      } catch (err) {
+        // slot might reference deleted/unknown activity
+      }
     },
 
     organizerName(userId) {
@@ -176,26 +169,20 @@ export default {
       return this.activities[activityId]
     },
 
-    releaseSlot(slotId) {
+    async releaseSlot(slotId) {
       if (!confirm('Release this reserved slot?')) return
       this.actionLoading = true
       this.error = null
       this.success = null
-      fetch(`http://localhost:8089/api/timeslots/${slotId}/release`, {
-        method: 'DELETE'
-      })
-        .then(async r => {
-          if (!r.ok && r.status !== 204) {
-            const err = await r.json().catch(() => ({}))
-            throw new Error(err.message || `HTTP ${r.status}`)
-          }
-        })
-        .then(() => {
-          this.success = 'Slot released.'
-          this.fetchSlots()
-        })
-        .catch(err => { this.error = err.message })
-        .finally(() => { this.actionLoading = false })
+      try {
+        await schedulingApi.release(slotId)
+        this.success = 'Slot released.'
+        await this.fetchSlots()
+      } catch (err) {
+        if (!err.silent) this.error = err.message
+      } finally {
+        this.actionLoading = false
+      }
     },
 
     formatTime(iso) {

@@ -27,6 +27,13 @@
       </div>
 
       <button class="btn-secondary" @click="addUser">+ Add user</button>
+      <button
+        v-if="authState.accountId"
+        class="btn-secondary"
+        @click="addMyself"
+        style="margin-left: 8px;">
+        + Add me
+      </button>
     </section>
 
     <div class="actions">
@@ -64,10 +71,14 @@
 </template>
 
 <script>
+import { schedulingApi, accountApi } from '../../api/client'
+import { authState } from '../../store/authStore'
+
 export default {
   name: 'ResolveSlots',
   data() {
     return {
+      authState,
       userIds: ['', ''],   // start with 2 empty rows
       profiles: {},
       resolved: null,      // null until first search; [] if none; [...] if found
@@ -91,19 +102,31 @@ export default {
     removeUser(idx) {
       this.userIds.splice(idx, 1)
     },
-    lookupProfile(userId) {
+    addMyself() {
+      const myId = this.authState.accountId
+      if (!myId) return
+      if (this.userIds.some(id => id && id.trim() === myId)) return  // already added
+      const emptyIdx = this.userIds.findIndex(id => !id || !id.trim())
+      if (emptyIdx >= 0) {
+        this.userIds[emptyIdx] = myId
+      } else {
+        this.userIds.push(myId)
+      }
+      this.lookupProfile(myId)
+    },
+    async lookupProfile(userId) {
       if (!userId || !userId.trim() || this.profiles[userId]) return
-      fetch(`http://localhost:8081/api/users/${userId.trim()}`)
-        .then(r => r.ok ? r.json() : null)
-        .then(p => {
-          if (p) this.profiles = { ...this.profiles, [userId.trim()]: p }
-        })
-        .catch(() => { /* unknown user — silent fallback */ })
+      try {
+        const p = await accountApi.getUser(userId.trim())
+        if (p) this.profiles = { ...this.profiles, [userId.trim()]: p }
+      } catch (err) {
+        // unknown user — silent fallback
+      }
     },
     profileFor(userId) {
       return userId ? this.profiles[userId.trim()] : null
     },
-    resolve() {
+    async resolve() {
       const cleanIds = this.userIds.map(id => id.trim()).filter(Boolean)
       if (cleanIds.length === 0) {
         this.error = 'Please enter at least one user ID.'
@@ -112,23 +135,13 @@ export default {
       this.loading = true
       this.error = null
       this.resolved = null
-      fetch('http://localhost:8089/api/timeslots/resolve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userIds: cleanIds })
-      })
-        .then(async r => {
-          if (!r.ok) {
-            const err = await r.json().catch(() => ({}))
-            throw new Error(err.message || `HTTP ${r.status}`)
-          }
-          return r.json()
-        })
-        .then(data => {
-          this.resolved = data
-        })
-        .catch(err => { this.error = err.message })
-        .finally(() => { this.loading = false })
+      try {
+        this.resolved = await schedulingApi.resolve(cleanIds)
+      } catch (err) {
+        if (!err.silent) this.error = err.message
+      } finally {
+        this.loading = false
+      }
     },
     dayLabel(dow) {
       return this.dayNames[dow] || dow

@@ -6,9 +6,17 @@
       <label>User ID</label>
       <div class="picker-row">
         <input v-model="userIdInput" placeholder="UUID of user" />
-        <button @click="loadUser" :disabled="loading || !userIdInput">
-          {{ loading ? 'Loading…' : 'Load' }}
-        </button>
+          <button @click="loadUser" :disabled="loading || !userIdInput">
+            {{ loading ? 'Loading…' : 'Load' }}
+          </button>
+          <button
+            v-if="authState.accountId"
+            class="btn-mini"
+            @click="loadMyself"
+            :disabled="loading"
+            title="Load my own schedule">
+            My
+          </button>
       </div>
       <p v-if="userProfile" class="user-info">
         {{ userProfile.name }}
@@ -71,10 +79,14 @@
 </template>
 
 <script>
+import { schedulingApi, accountApi } from '../../api/client'
+import { authState } from '../../store/authStore'
+
 export default {
   name: 'UserAvailability',
   data() {
     return {
+      authState,
       userIdInput: '',
       currentUserId: null,
       userProfile: null,
@@ -88,7 +100,7 @@ export default {
     }
   },
   methods: {
-    loadUser() {
+    async loadUser() {
       if (!this.userIdInput) return
       this.loading = true
       this.error = null
@@ -98,34 +110,34 @@ export default {
 
       const userId = this.userIdInput.trim()
 
-      // Fetch profile and availability in parallel
-      const profilePromise = fetch(`http://localhost:8081/api/users/${userId}`)
-        .then(r => r.ok ? r.json() : null)
-        .catch(() => null)
+      try {
+        // Fetch profile and availability in parallel
+        const [profile, windows] = await Promise.all([
+          accountApi.getUser(userId).catch(() => null),
+          schedulingApi.getUserAvailability(userId)
+        ])
 
-      const availabilityPromise = fetch(`http://localhost:8089/api/timeslots/users/${userId}/availability`)
-        .then(async r => {
-          if (!r.ok) {
-            const err = await r.json().catch(() => ({}))
-            throw new Error(err.message || `HTTP ${r.status}`)
-          }
-          return r.json()
-        })
+        this.userProfile = profile
+        this.windows = windows.map(w => ({
+          windowId: w.windowId,
+          dayOfWeek: w.dayOfWeek,
+          timeRangeFrom: w.timeRangeFrom,
+          timeRangeTo: w.timeRangeTo
+        }))
+        this.currentUserId = userId
+        this.loaded = true
+      } catch (err) {
+        if (!err.silent) this.error = err.message
+      } finally {
+        this.loading = false
+      }
+    },
 
-      Promise.all([profilePromise, availabilityPromise])
-        .then(([profile, windows]) => {
-          this.userProfile = profile
-          this.windows = windows.map(w => ({
-            windowId: w.windowId,
-            dayOfWeek: w.dayOfWeek,
-            timeRangeFrom: w.timeRangeFrom,
-            timeRangeTo: w.timeRangeTo
-          }))
-          this.currentUserId = userId
-          this.loaded = true
-        })
-        .catch(err => { this.error = err.message })
-        .finally(() => { this.loading = false })
+    loadMyself() {
+      if (this.authState.accountId) {
+        this.userIdInput = this.authState.accountId
+        this.loadUser()
+      }
     },
 
     addWindow() {
@@ -140,7 +152,7 @@ export default {
       this.windows.splice(idx, 1)
     },
 
-    saveAvailability() {
+    async saveAvailability() {
       // Basic client-side validation
       for (const [idx, w] of this.windows.entries()) {
         if (!w.timeRangeFrom || !w.timeRangeTo) {
@@ -161,30 +173,21 @@ export default {
         }))
       }
 
-      fetch(`http://localhost:8089/api/timeslots/users/${this.currentUserId}/availability`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      })
-        .then(async r => {
-          if (!r.ok) {
-            const err = await r.json().catch(() => ({}))
-            throw new Error(err.message || `HTTP ${r.status}`)
-          }
-          return r.json()
-        })
-        .then(saved => {
-          // Re-sync from server response (so windowIds are populated)
-          this.windows = saved.map(w => ({
-            windowId: w.windowId,
-            dayOfWeek: w.dayOfWeek,
-            timeRangeFrom: w.timeRangeFrom,
-            timeRangeTo: w.timeRangeTo
-          }))
-          this.success = `Schedule saved (${saved.length} window(s)).`
-        })
-        .catch(err => { this.error = err.message })
-        .finally(() => { this.saving = false })
+      try {
+        const saved = await schedulingApi.updateUserAvailability(this.currentUserId, body)
+        // Re-sync from server response (so windowIds are populated)
+        this.windows = saved.map(w => ({
+          windowId: w.windowId,
+          dayOfWeek: w.dayOfWeek,
+          timeRangeFrom: w.timeRangeFrom,
+          timeRangeTo: w.timeRangeTo
+        }))
+        this.success = `Schedule saved (${saved.length} window(s)).`
+      } catch (err) {
+        if (!err.silent) this.error = err.message
+      } finally {
+        this.saving = false
+      }
     }
   }
 }
@@ -305,4 +308,17 @@ button:disabled { background: #aaa; cursor: not-allowed; }
 }
 .error { background: #fadbd8; color: #c0392b; }
 .success { background: #d4efdf; color: #196f3d; }
+
+.btn-mini {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 0.9em;
+  cursor: pointer;
+  font-weight: bold;
+  margin: 0;
+}
+.btn-mini:disabled { background: #aaa; cursor: not-allowed; }
 </style>
