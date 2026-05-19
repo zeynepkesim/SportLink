@@ -13,6 +13,7 @@ import router from '../router'
 const ACCOUNT_BASE = 'http://localhost:8081'
 const MODERATION_BASE = 'http://localhost:8090'
 const RATING_BASE = 'http://localhost:8082'
+const MATCHING_BASE = 'http://localhost:8087'
 
 async function request(baseUrl, path, options = {}) {
 // ... rest of request function
@@ -131,8 +132,50 @@ export const moderationApi = {
 }
 
 export const ratingApi = {
+  getRatings: (params) => {
+    const query = new URLSearchParams(params).toString()
+    return request(RATING_BASE, `/api/ratings${query ? `?${query}` : ''}`)
+  },
+  getRating: (id) => request(RATING_BASE, `/api/ratings/${id}`),
+  createRating: (body) => request(RATING_BASE, '/api/ratings', {
+    method: 'POST',
+    body: JSON.stringify(body)
+  }),
+  deleteRating: (id) => request(RATING_BASE, `/api/ratings/${id}`, {
+    method: 'DELETE'
+  }),
   getReputation: (userId) => request(RATING_BASE, `/api/reputations/${userId}`),
   recomputeReputation: (userId) => request(RATING_BASE, `/api/reputations/${userId}/recompute`, {
     method: 'POST'
+  })
+}
+
+export const matchingApi = {
+  getUserSuggestions: (userId, params) => {
+    const query = new URLSearchParams(params).toString()
+    return request(MATCHING_BASE, `/api/matching/users/${userId}/suggestions?${query}`)
+  },
+  recomputeUserSuggestions: (userId, params) => {
+    const query = new URLSearchParams(params).toString()
+    return request(MATCHING_BASE, `/api/matching/users/${userId}/suggestions?${query}`, {
+      method: 'POST'
+    })
+  },
+  getActivitySuggestions: (userId, params) => {
+    const query = new URLSearchParams(params).toString()
+    return request(MATCHING_BASE, `/api/matching/activities/${userId}/suggestions?${query}`)
+  },
+  recomputeActivitySuggestions: (userId, params) => {
+    const query = new URLSearchParams(params).toString()
+    return request(MATCHING_BASE, `/api/matching/activities/${userId}/suggestions?${query}`, {
+      method: 'POST'
+    })
+  },
+  checkCompatibility: (userAId, userBId) => {
+    const query = new URLSearchParams({ userAId, userBId }).toString()
+    return request(MATCHING_BASE, `/api/matching/compatibility?${query}`)
+  },
+  invalidateSuggestion: (suggestionId) => request(MATCHING_BASE, `/api/matching/suggestions/${suggestionId}`, {
+    method: 'DELETE'
   })
 }

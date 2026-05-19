@@ -7,6 +7,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
@@ -26,6 +29,14 @@ public class AccountManagementClient {
         this.accountManagementUrl = accountManagementUrl;
     }
 
+    private String getAuthHeader() {
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes != null) {
+            return attributes.getRequest().getHeader("Authorization");
+        }
+        return null;
+    }
+
     public boolean userExists(UUID userId) {
         if (mock) {
             log.debug("Mock mode: assuming user {} exists", userId);
@@ -33,10 +44,16 @@ public class AccountManagementClient {
         }
 
         try {
-            webClientBuilder.build()
+            String authHeader = getAuthHeader();
+            WebClient.RequestHeadersSpec<?> request = webClientBuilder.build()
                     .get()
-                    .uri(accountManagementUrl + "/api/users/{id}", userId)
-                    .retrieve()
+                    .uri(accountManagementUrl + "/api/users/{id}", userId);
+            
+            if (authHeader != null) {
+                request = request.header("Authorization", authHeader);
+            }
+
+            request.retrieve()
                     .bodyToMono(Void.class)
                     .block();
             return true;
@@ -55,10 +72,16 @@ public class AccountManagementClient {
         }
 
         try {
-            UserProfile profile = webClientBuilder.build()
+            String authHeader = getAuthHeader();
+            WebClient.RequestHeadersSpec<?> request = webClientBuilder.build()
                     .get()
-                    .uri(accountManagementUrl + "/api/users/{id}", userId)
-                    .retrieve()
+                    .uri(accountManagementUrl + "/api/users/{id}", userId);
+            
+            if (authHeader != null) {
+                request = request.header("Authorization", authHeader);
+            }
+
+            UserProfile profile = request.retrieve()
                     .bodyToMono(UserProfile.class)
                     .block();
             return profile != null && profile.getName() != null ? profile.getName() : "Unknown user";
