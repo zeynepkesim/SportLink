@@ -28,7 +28,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-      
+
   account-db:
     image: postgres:15
     container_name: sportlink-account-db
@@ -177,6 +177,7 @@ services:
       SPORTLINK_SERVICES_ACCOUNT_MANAGEMENT_URL: http://account-service:8081
       SPORTLINK_SERVICES_SCHEDULING_URL: http://scheduling-service:8089
       SPORTLINK_MOCK_DEPENDENCIES: "false"
+      SPORTLINK_JWT_SECRET: ${SPORTLINK_JWT_SECRET:-dev-only-shared-secret-please-replace-in-production-256-bit-min}
     ports:
       - "8083:8083"
     networks:
@@ -218,6 +219,7 @@ services:
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPORTLINK_JWT_SECRET: ${SPORTLINK_JWT_SECRET:-dev-only-shared-secret-please-replace-in-production-256-bit-min}
     ports:
       - "8089:8089"
     networks:
