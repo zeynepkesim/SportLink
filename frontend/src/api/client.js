@@ -16,6 +16,9 @@ const RATING_BASE = 'http://localhost:8082'
 const MATCHING_BASE = 'http://localhost:8087'
 const ACTIVITY_BASE = 'http://localhost:8083'
 const SCHEDULING_BASE = 'http://localhost:8089'
+const BOOKING_BASE = 'http://localhost:8088'
+const SEARCH_BASE = 'http://localhost:8086'
+
 
 async function request(baseUrl, path, options = {}) {
 // ... rest of request function
@@ -246,4 +249,44 @@ export const schedulingApi = {
     method: 'POST',
     body: JSON.stringify({ userIds })
   })
+}
+
+
+export const bookingApi = {
+  list: (filters = {}) => request(BOOKING_BASE, '/api/bookings' + buildQuery(filters)),
+  get: (id) => request(BOOKING_BASE, `/api/bookings/${encodeURIComponent(id)}`),
+  create: (body) => request(BOOKING_BASE, '/api/bookings', {
+    method: 'POST',
+    body: JSON.stringify(body)
+  }),
+  confirm: (id) => request(BOOKING_BASE, `/api/bookings/${encodeURIComponent(id)}/confirm`, {
+    method: 'PUT'
+  }),
+  cancel: (id) => request(BOOKING_BASE, `/api/bookings/${encodeURIComponent(id)}/cancel`, {
+    method: 'PUT'
+  }),
+  refund: (id) => request(BOOKING_BASE, `/api/bookings/${encodeURIComponent(id)}/refund`, {
+    method: 'POST'
+  }),
+  searchFacilities: (filters = {}) => request(
+    BOOKING_BASE, '/api/bookings/facilities/search' + buildQuery(filters)
+  )
+}
+
+export const searchApi = {
+  all: (filters = {}) => request(SEARCH_BASE, '/api/search' + buildQuery(filters)),
+  users: (filters = {}) => request(SEARCH_BASE, '/api/search/users' + buildQuery(filters)),
+  activities: (filters = {}) => request(SEARCH_BASE, '/api/search/activities' + buildQuery(filters)),
+  facilities: (filters = {}) => request(SEARCH_BASE, '/api/search/facilities' + buildQuery(filters)),
+  indexEntity: (body) => request(SEARCH_BASE, '/api/search/index', {
+    method: 'POST',
+    body: JSON.stringify(body)
+  }),
+  getIndex: (entityType, entityId) => request(
+    SEARCH_BASE, `/api/search/index/${encodeURIComponent(entityType)}/${encodeURIComponent(entityId)}`
+  ),
+  deleteIndex: (entityType, entityId) => request(
+    SEARCH_BASE, `/api/search/index/${encodeURIComponent(entityType)}/${encodeURIComponent(entityId)}`,
+    { method: 'DELETE' }
+  )
 }
