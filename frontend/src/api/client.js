@@ -18,15 +18,18 @@ const ACTIVITY_BASE = 'http://localhost:8083'
 const SCHEDULING_BASE = 'http://localhost:8089'
 
 async function request(baseUrl, path, options = {}) {
-// ... rest of request function
-  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) }
+  // `optional: true` marks calls to teammates' services that may not accept
+  // our token (different JWT config, etc.). A 401 from those is not a
+  // session-expiry event — the caller's .catch() can swallow it.
+  const { optional = false, ...fetchOptions } = options
+  const headers = { 'Content-Type': 'application/json', ...(fetchOptions.headers || {}) }
   if (authState.token) {
     headers.Authorization = `Bearer ${authState.token}`
   }
 
   let response
   try {
-    response = await fetch(baseUrl + path, { ...options, headers })
+    response = await fetch(baseUrl + path, { ...fetchOptions, headers })
   } catch (networkErr) {
     throw new Error('Network error: ' + networkErr.message)
   }
@@ -34,6 +37,11 @@ async function request(baseUrl, path, options = {}) {
   const isLoginAttempt = path.startsWith('/api/auth/login')
 
   if (response.status === 401 && !isLoginAttempt) {
+    if (optional) {
+      const err = new Error(`Unauthorized: ${path}`)
+      err.silent = true
+      throw err
+    }
     clearAuth()
     toast.error('Session expired. Please sign in again.')
     if (router.currentRoute.value.path !== '/account/login') {
@@ -159,7 +167,8 @@ export const ratingApi = {
   deleteRating: (id) => request(RATING_BASE, `/api/ratings/${id}`, {
     method: 'DELETE'
   }),
-  getReputation: (userId) => request(RATING_BASE, `/api/reputations/${userId}`),
+  // Optional: a 401 from rating-service must not kill our session.
+  getReputation: (userId) => request(RATING_BASE, `/api/reputations/${userId}`, { optional: true }),
   recomputeReputation: (userId) => request(RATING_BASE, `/api/reputations/${userId}/recompute`, {
     method: 'POST'
   })
