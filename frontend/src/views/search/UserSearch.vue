@@ -1,11 +1,11 @@
 <template>
-  <div class="user-search">
+  <div class="search-page">
     <h2>User Search</h2>
-    <p class="subtitle">
-      GET <code>/api/search/users</code> &middot; used by the Matching Service to retrieve candidate users.
+    <p class="muted">
+      Search indexed user profiles via <code>/api/search/users</code>.
     </p>
 
-    <form class="filters" @submit.prevent="runSearch">
+    <form class="filters" @submit.prevent="search">
       <div class="row">
         <label>
           User name
@@ -23,15 +23,13 @@
           Location
           <input v-model="filters.location" type="text" placeholder="e.g. Tartu" />
         </label>
-      </div>
-      <div class="row">
         <label>
-          Min rating
-          <input v-model.number="filters.userRatingScore" type="number" step="0.1" min="0" max="5" placeholder="e.g. 4.5" />
+          User rating score
+          <input v-model.number="filters.userRatingScore" type="number" step="0.1" min="0" max="5" placeholder="e.g. 4.7" />
         </label>
         <label>
           Sport preferences
-          <input v-model="filters.userSportPreferences" type="text" placeholder="e.g. basketball,football" />
+          <input v-model="filters.userSportPreferences" type="text" placeholder="e.g. BASKETBALL,VOLLEYBALL" />
         </label>
       </div>
       <div class="actions">
@@ -42,15 +40,11 @@
       </div>
     </form>
 
-    <div v-if="lastUrl" class="last-url">
-      <small>GET <code>{{ lastUrl }}</code></small>
-    </div>
-
-    <div v-if="loading" class="loading">Loading…</div>
+    <div v-if="loading" class="loading">Loading...</div>
 
     <div v-else-if="error" class="error">
-      <p><b>Error:</b> {{ error }}</p>
-      <button @click="runSearch">Retry</button>
+      <p>{{ error }}</p>
+      <button @click="search">Retry</button>
     </div>
 
     <div v-else-if="users.length === 0 && hasSearched" class="empty">
@@ -60,29 +54,24 @@
     <div v-else-if="users.length > 0">
       <p class="count">Found <b>{{ users.length }}</b> user(s)</p>
       <div class="item" v-for="u in users" :key="u.indexId || u.entityId">
-        <div class="item-head">
-          <h3>{{ u.displayName || u.userName || '(no name)' }}</h3>
-          <span class="badge">USER</span>
-        </div>
+        <h3>{{ u.displayName || u.userName || '(no name)' }}</h3>
         <div class="meta">
-          <span v-if="u.sportType">🏀 {{ u.sportType }}</span>
-          <span v-if="u.skillLevel">🎯 {{ u.skillLevel }}</span>
-          <span v-if="u.location">📍 {{ u.location }}</span>
-          <span v-if="u.userRatingScore != null">⭐ {{ u.userRatingScore }}</span>
+          <span class="badge">USER</span>
+          <span v-if="u.sportType" class="sport">🏀 {{ u.sportType }}</span>
+          <span v-if="u.skillLevel" class="sport">🎯 {{ u.skillLevel }}</span>
+          <span v-if="u.location" class="sport">📍 {{ u.location }}</span>
+          <span v-if="u.userRatingScore" class="sport">⭐ {{ u.userRatingScore }}</span>
         </div>
-        <div v-if="u.userSportPreferences" class="prefs">
-          <small><b>Preferences:</b> {{ u.userSportPreferences }}</small>
-        </div>
-        <div v-if="u.keywords && u.keywords.length" class="keywords">
+        <p v-if="u.userSportPreferences" class="prefs-line">
+          <b>Prefers:</b> {{ u.userSportPreferences }}
+        </p>
+        <p v-if="u.keywords && u.keywords.length" class="keywords-line">
+          <b>Keywords:</b>
           <span v-for="kw in u.keywords" :key="kw" class="keyword">{{ kw }}</span>
-        </div>
-        <p class="ids">
-          <small>
-            <b>Entity ID:</b> {{ u.entityId || '—' }}
-            <span v-if="u.lastIndexedAt">
-              <br /><b>Last indexed:</b> {{ formatTime(u.lastIndexedAt) }}
-            </span>
-          </small>
+        </p>
+        <p class="ids-line">
+          <b>Entity ID:</b> {{ u.entityId || '—' }}
+          &middot; <b>Index ID:</b> {{ u.indexId || '—' }}
         </p>
       </div>
     </div>
@@ -90,7 +79,7 @@
 </template>
 
 <script>
-const SEARCH_BASE = 'http://localhost:8086'
+import { searchApi } from '../../api/client'
 
 export default {
   name: 'UserSearch',
@@ -107,87 +96,54 @@ export default {
       users: [],
       loading: false,
       error: null,
-      lastUrl: null,
       hasSearched: false
     }
   },
   methods: {
-    runSearch() {
+    search() {
       this.loading = true
       this.error = null
       this.hasSearched = true
-
-      const params = []
-      const f = this.filters
-      const addStr = (k, v) => {
-        if (v != null && String(v).trim() !== '') {
-          params.push(k + '=' + encodeURIComponent(String(v).trim()))
-        }
-      }
-      addStr('userName', f.userName)
-      addStr('sportType', f.sportType)
-      addStr('skillLevel', f.skillLevel)
-      addStr('location', f.location)
-      if (f.userRatingScore != null && f.userRatingScore !== '') addStr('userRatingScore', f.userRatingScore)
-      addStr('userSportPreferences', f.userSportPreferences)
-
-      const query = params.length ? '?' + params.join('&') : ''
-      const url = SEARCH_BASE + '/api/search/users' + query
-      this.lastUrl = url
-
-      fetch(url)
-        .then(async response => {
-          if (!response.ok) {
-            let msg
-            try {
-              const body = await response.json()
-              msg = body.message || body.error || ('HTTP ' + response.status)
-            } catch (e) {
-              msg = 'HTTP ' + response.status + ' ' + response.statusText
-            }
-            throw new Error(msg)
-          }
-          return response.json()
+      searchApi.users(this.filters)
+        .then(data => {
+          this.users = Array.isArray(data) ? data : []
         })
-        .then(data => { this.users = data })
-        .catch(err => { this.error = err.message })
-        .finally(() => { this.loading = false })
+        .catch(err => {
+          if (!err.silent) this.error = err.message
+        })
+        .finally(() => {
+          this.loading = false
+        })
     },
     clearFilters() {
-      Object.keys(this.filters).forEach(k => {
-        this.filters[k] = (k === 'userRatingScore') ? null : ''
-      })
+      this.filters.userName = ''
+      this.filters.sportType = ''
+      this.filters.skillLevel = ''
+      this.filters.location = ''
+      this.filters.userRatingScore = null
+      this.filters.userSportPreferences = ''
       this.error = null
-      this.users = []
-      this.hasSearched = false
-      this.lastUrl = null
-      this.runSearch()
-    },
-    formatTime(iso) {
-      if (!iso) return ''
-      const d = new Date(iso)
-      return d.toLocaleString('en-GB', {
-        day: '2-digit', month: 'short',
-        hour: '2-digit', minute: '2-digit'
-      })
+      this.search()
     }
   },
   mounted() {
-    this.runSearch()
+    this.search()
   }
 }
 </script>
 
 <style scoped>
-.user-search { text-align: left; }
-.subtitle {
-  color: #555;
+.search-page { text-align: left; }
+h2 { color: #2c3e50; }
+.muted {
+  color: #777;
   font-size: 0.9em;
-  margin-top: 0;
+  margin-top: -8px;
+  margin-bottom: 20px;
 }
-.subtitle code {
+.muted code {
   background: #eaf3ff;
-  padding: 1px 6px;
+  padding: 1px 5px;
   border-radius: 3px;
   font-family: monospace;
 }
@@ -227,64 +183,48 @@ button {
   font-size: 0.95em;
 }
 button:disabled { opacity: 0.6; cursor: not-allowed; }
-button.secondary {
-  background: white;
-  color: #2c3e50;
-  border: 1px solid #ccc;
-}
-.last-url {
-  background: #eaf3ff;
-  border-left: 4px solid #3498db;
-  padding: 6px 12px;
-  border-radius: 0 6px 6px 0;
-  margin-bottom: 10px;
-  color: #2c3e50;
-  word-break: break-all;
-}
-.last-url code { font-family: monospace; font-size: 0.85em; }
+button.secondary { background: white; color: #2c3e50; border: 1px solid #ccc; }
 .count { text-align: center; color: #555; }
 .item {
-  background: #f3eaff;
+  background: #f4ecf7;
   padding: 15px 20px;
   margin-bottom: 12px;
   border-radius: 10px;
   border-left: 4px solid #8e44ad;
 }
-.item-head {
+.item h3 { margin: 0 0 8px; color: #2c3e50; }
+.meta {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  gap: 12px;
   margin-bottom: 8px;
+  flex-wrap: wrap;
 }
-.item-head h3 { margin: 0; color: #2c3e50; }
 .badge {
   background: #8e44ad;
   color: white;
   padding: 3px 10px;
   border-radius: 12px;
-  font-size: 0.78em;
+  font-size: 0.8em;
   font-weight: bold;
 }
-.meta {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 10px;
-  flex-wrap: wrap;
-  font-size: 0.93em;
+.sport { font-size: 0.95em; }
+.prefs-line, .keywords-line, .ids-line {
+  color: #555;
+  margin: 4px 0 0;
+  font-size: 0.9em;
 }
-.prefs { margin-bottom: 8px; color: #555; }
-.keywords { margin-bottom: 8px; }
 .keyword {
   display: inline-block;
-  background: #e0d0f0;
-  color: #4a2569;
+  background: #e8daef;
+  color: #4a235a;
   padding: 2px 7px;
   border-radius: 3px;
-  font-size: 0.8em;
-  margin: 0 4px 4px 0;
-  font-family: monospace;
+  font-size: 0.85em;
+  margin: 0 4px 0 4px;
 }
-.ids { color: #777; margin: 0; }
-.loading, .empty, .error { text-align: center; padding: 30px; }
+.loading, .empty, .error {
+  text-align: center;
+  padding: 30px;
+}
 .error { color: #c0392b; }
 </style>

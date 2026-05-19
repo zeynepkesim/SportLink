@@ -1,6 +1,9 @@
 <template>
-  <div class="facilities">
+  <div class="search-page">
     <h2>Facility Search</h2>
+    <p class="muted">
+      Search indexed sport facilities via <code>/api/search/facilities</code>.
+    </p>
 
     <form class="filters" @submit.prevent="searchFacilities">
       <div class="row">
@@ -30,10 +33,6 @@
       </div>
     </form>
 
-    <div v-if="lastUrl" class="last-url">
-      <small>GET <code>{{ lastUrl }}</code></small>
-    </div>
-
     <div v-if="bookingCallTriggered" class="integration-note">
       <b>Cross-service call active.</b>
       The Search Service is calling
@@ -41,7 +40,7 @@
       on the Booking Service for this request.
     </div>
 
-    <div v-if="loading" class="loading">Loading…</div>
+    <div v-if="loading" class="loading">Loading...</div>
 
     <div v-else-if="error" class="error">
       <p>{{ error }}</p>
@@ -54,28 +53,23 @@
 
     <div v-else>
       <p class="count">Found <b>{{ facilities.length }}</b> facility(ies)</p>
-      <div class="item" v-for="facility in facilities" :key="facility.indexId || facility.entityId">
-        <h3>{{ facility.displayName || facility.facilityName || '(no name)' }}</h3>
+      <div class="item" v-for="f in facilities" :key="f.indexId || f.entityId">
+        <h3>{{ f.displayName || f.facilityName || '(no name)' }}</h3>
         <div class="meta">
           <span class="badge">FACILITY</span>
-          <span v-if="facility.sportType" class="sport">🏀 {{ facility.sportType }}</span>
-          <span v-if="facility.location" class="location">📍 {{ facility.location }}</span>
+          <span v-if="f.sportType" class="sport">🏀 {{ f.sportType }}</span>
+          <span v-if="f.location" class="sport">📍 {{ f.location }}</span>
         </div>
-        <div v-if="facility.keywords && facility.keywords.length" class="keywords">
-          <span
-            v-for="kw in facility.keywords"
-            :key="kw"
-            class="keyword"
-          >{{ kw }}</span>
-        </div>
-        <p class="ids">
-          <small>
-            <b>Entity ID:</b> {{ facility.entityId || '—' }}<br />
-            <b>Index ID:</b> {{ facility.indexId || '—' }}
-            <span v-if="facility.lastIndexedAt">
-              <br /><b>Last indexed:</b> {{ formatTime(facility.lastIndexedAt) }}
-            </span>
-          </small>
+        <p v-if="f.keywords && f.keywords.length" class="keywords-line">
+          <b>Keywords:</b>
+          <span v-for="kw in f.keywords" :key="kw" class="keyword">{{ kw }}</span>
+        </p>
+        <p class="ids-line">
+          <b>Entity ID:</b> {{ f.entityId || '—' }}
+          &middot; <b>Index ID:</b> {{ f.indexId || '—' }}
+          <span v-if="f.lastIndexedAt">
+            &middot; <b>Indexed:</b> {{ formatTime(f.lastIndexedAt) }}
+          </span>
         </p>
       </div>
     </div>
@@ -83,6 +77,8 @@
 </template>
 
 <script>
+import { searchApi } from '../../api/client'
+
 export default {
   name: 'FacilitySearch',
   data() {
@@ -96,7 +92,6 @@ export default {
       facilities: [],
       loading: false,
       error: null,
-      lastUrl: null,
       bookingCallTriggered: false
     }
   },
@@ -107,35 +102,12 @@ export default {
       this.bookingCallTriggered = Boolean(
         this.filters.sportCenterId && this.filters.sportCenterId.trim()
       )
-
-      const params = []
-      const f = this.filters
-      if (f.facilityName && f.facilityName.trim())
-        params.push('facilityName=' + encodeURIComponent(f.facilityName.trim()))
-      if (f.sportType && f.sportType.trim())
-        params.push('sportType=' + encodeURIComponent(f.sportType.trim()))
-      if (f.location && f.location.trim())
-        params.push('location=' + encodeURIComponent(f.location.trim()))
-      if (f.sportCenterId && f.sportCenterId.trim())
-        params.push('sportCenterId=' + encodeURIComponent(f.sportCenterId.trim()))
-
-      const query = params.length ? '?' + params.join('&') : ''
-      const url = 'http://localhost:8086/api/search/facilities' + query
-      this.lastUrl = url
-
-      fetch(url)
-        .then(response => {
-          if (!response.ok) {
-            throw new Error('Failed to fetch facilities (HTTP ' + response.status + ')')
-          }
-          return response.json()
-        })
+      searchApi.facilities(this.filters)
         .then(data => {
-          this.facilities = data
+          this.facilities = Array.isArray(data) ? data : []
         })
         .catch(err => {
-          this.error = err.message
-          console.error(err)
+          if (!err.silent) this.error = err.message
         })
         .finally(() => {
           this.loading = false
@@ -152,10 +124,8 @@ export default {
     },
     formatTime(iso) {
       if (!iso) return ''
-      const d = new Date(iso)
-      return d.toLocaleString('en-GB', {
-        day: '2-digit', month: 'short',
-        hour: '2-digit', minute: '2-digit'
+      return new Date(iso).toLocaleString('en-GB', {
+        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
       })
     }
   },
@@ -166,8 +136,19 @@ export default {
 </script>
 
 <style scoped>
-.facilities {
-  text-align: left;
+.search-page { text-align: left; }
+h2 { color: #2c3e50; }
+.muted {
+  color: #777;
+  font-size: 0.9em;
+  margin-top: -8px;
+  margin-bottom: 20px;
+}
+.muted code {
+  background: #eaf3ff;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: monospace;
 }
 .filters {
   background: #f4f4f4;
@@ -199,10 +180,7 @@ export default {
   font-size: 0.8em;
   margin-top: 3px;
 }
-.actions {
-  display: flex;
-  gap: 8px;
-}
+.actions { display: flex; gap: 8px; }
 button {
   background: #42b983;
   color: white;
@@ -212,28 +190,8 @@ button {
   cursor: pointer;
   font-size: 0.95em;
 }
-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-button.secondary {
-  background: white;
-  color: #2c3e50;
-  border: 1px solid #ccc;
-}
-.last-url {
-  background: #eaf3ff;
-  border-left: 4px solid #3498db;
-  padding: 6px 12px;
-  border-radius: 0 6px 6px 0;
-  margin-bottom: 10px;
-  color: #2c3e50;
-  word-break: break-all;
-}
-.last-url code {
-  font-family: monospace;
-  font-size: 0.85em;
-}
+button:disabled { opacity: 0.6; cursor: not-allowed; }
+button.secondary { background: white; color: #2c3e50; border: 1px solid #ccc; }
 .integration-note {
   background: #fff7e6;
   border-left: 4px solid #f39c12;
@@ -249,10 +207,7 @@ button.secondary {
   border-radius: 3px;
   font-family: monospace;
 }
-.count {
-  text-align: center;
-  color: #555;
-}
+.count { text-align: center; color: #555; }
 .item {
   background: #eaf3ff;
   padding: 15px 20px;
@@ -260,14 +215,11 @@ button.secondary {
   border-radius: 10px;
   border-left: 4px solid #3498db;
 }
-.item h3 {
-  margin: 0 0 8px;
-  color: #2c3e50;
-}
+.item h3 { margin: 0 0 8px; color: #2c3e50; }
 .meta {
   display: flex;
   gap: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   flex-wrap: wrap;
 }
 .badge {
@@ -278,11 +230,11 @@ button.secondary {
   font-size: 0.8em;
   font-weight: bold;
 }
-.sport, .location {
-  font-size: 0.95em;
-}
-.keywords {
-  margin-bottom: 8px;
+.sport { font-size: 0.95em; }
+.keywords-line, .ids-line {
+  color: #555;
+  margin: 4px 0 0;
+  font-size: 0.9em;
 }
 .keyword {
   display: inline-block;
@@ -290,18 +242,12 @@ button.secondary {
   color: #1f3a5f;
   padding: 2px 7px;
   border-radius: 3px;
-  font-size: 0.8em;
-  margin: 0 4px 4px 0;
-}
-.ids {
-  color: #777;
-  margin: 0;
+  font-size: 0.85em;
+  margin: 0 4px 0 4px;
 }
 .loading, .empty, .error {
   text-align: center;
   padding: 30px;
 }
-.error {
-  color: #c0392b;
-}
+.error { color: #c0392b; }
 </style>
