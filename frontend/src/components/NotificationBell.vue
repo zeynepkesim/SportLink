@@ -133,6 +133,7 @@ export default {
           return `${name} started following you`
         }
         if (n.type === 'COMMENT_POSTED') return 'New comment on your activity'
+        if (n.type === 'ACTIVITY_CREATED') return `New activity: ${p.title || 'Check it out!'}`
         return p.message || n.type
       } catch {
         return n.type
@@ -141,11 +142,13 @@ export default {
     iconFor(type) {
       if (type === 'FOLLOWER_UPDATE') return '👤'
       if (type === 'COMMENT_POSTED') return '💬'
+      if (type === 'ACTIVITY_CREATED') return '🏃'
       return '🔔'
     },
     timeAgo(isoStr) {
       if (!isoStr) return ''
-      const diff = Date.now() - new Date(isoStr).getTime()
+      const normalized = isoStr.endsWith('Z') ? isoStr : isoStr + 'Z'
+      const diff = Date.now() - new Date(normalized).getTime()
       const m = Math.floor(diff / 60000)
       if (m < 1) return 'just now'
       if (m < 60) return `${m}m ago`

@@ -78,6 +78,15 @@ public class ActivityService {
             }
         }
 
+        activityEventPublisher.publishActivityCreated(
+                com.sportlink.activitymanagement.event.ActivityCreatedEvent.builder()
+                        .activityId(saved.getActivityId())
+                        .organizerId(saved.getOrganizerId())
+                        .title(saved.getTitle())
+                        .sportType(saved.getSportType())
+                        .createdAt(LocalDateTime.now())
+                        .build());
+
         log.info("Activity {} created by organizer {}", saved.getActivityId(), saved.getOrganizerId());
         return toDto(saved);
     }
