@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { authState } from '../store/authStore'
+import { toast } from '../store/toastStore'
 
 import AllActivities from '../views/activities/AllActivities.vue'
 import CreateActivity from '../views/activities/CreateActivity.vue'
@@ -46,7 +47,8 @@ const routes = [
   {
     path: '/activities',
     name: 'AllActivities',
-    component: AllActivities
+    component: AllActivities,
+    meta: { requiresAuth: true }
   },
   {
     path: '/activities/new',
@@ -63,22 +65,26 @@ const routes = [
   {
     path: '/slots',
     name: 'AvailableSlots',
-    component: AvailableSlots
+    component: AvailableSlots,
+    meta: { requiresAuth: true }
   },
   {
     path: '/slots/reserve',
     name: 'ReserveSlot',
-    component: ReserveSlot
+    component: ReserveSlot,
+    meta: { requiresAuth: true }
   },
   {
     path: '/slots/availability',
     name: 'UserAvailability',
-    component: UserAvailability
+    component: UserAvailability,
+    meta: { requiresAuth: true }
   },
   {
     path: '/slots/resolve',
     name: 'ResolveSlots',
-    component: ResolveSlots
+    component: ResolveSlots,
+    meta: { requiresAuth: true }
   },
   {
     path: '/account/login',
@@ -243,6 +249,7 @@ const router = createRouter({
 
 router.beforeEach((to, _from, next) => {
   if (to.meta.requiresAuth && !authState.token) {
+    toast.error('Please log in to access this page')
     next({ name: 'AccountLogin', query: { redirect: to.fullPath } })
   } else {
     next()

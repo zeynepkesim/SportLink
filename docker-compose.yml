@@ -460,7 +460,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5436:5432"
+      - "5443:5432"
     volumes:
       - notification-db-data:/var/lib/postgresql/data
     networks:
