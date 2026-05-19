@@ -14,8 +14,13 @@ const ACCOUNT_BASE = 'http://localhost:8081'
 const MODERATION_BASE = 'http://localhost:8090'
 const RATING_BASE = 'http://localhost:8082'
 const MATCHING_BASE = 'http://localhost:8087'
+<<<<<<< HEAD
+const ACTIVITY_BASE = 'http://localhost:8083'
+const SCHEDULING_BASE = 'http://localhost:8089'
+=======
 const BOOKING_BASE = 'http://localhost:8088'
 const SEARCH_BASE = 'http://localhost:8086'
+>>>>>>> 5ae5269a9fa3d3909c2aa97a0f53bbf4469b5d0b
 
 async function request(baseUrl, path, options = {}) {
 // ... rest of request function
@@ -195,57 +200,54 @@ export const matchingApi = {
   })
 }
 
-export const bookingApi = {
-  // GET /api/bookings?activityId=&sportCenterId=&bookingStatus=
-  list: (filters = {}) => request(BOOKING_BASE, '/api/bookings' + buildQuery(filters)),
-  // GET /api/bookings/{id}
-  get: (id) => request(BOOKING_BASE, `/api/bookings/${encodeURIComponent(id)}`),
-  // POST /api/bookings
-  create: (body) => request(BOOKING_BASE, '/api/bookings', {
+export const activityApi = {
+  list: () => request(ACTIVITY_BASE, '/api/activities'),
+  get: (id) => request(ACTIVITY_BASE, `/api/activities/${id}`),
+  create: (body) => request(ACTIVITY_BASE, '/api/activities', {
     method: 'POST',
     body: JSON.stringify(body)
   }),
-  // PUT /api/bookings/{id}/confirm
-  confirm: (id) => request(BOOKING_BASE, `/api/bookings/${encodeURIComponent(id)}/confirm`, {
-    method: 'PUT'
+  update: (id, body) => request(ACTIVITY_BASE, `/api/activities/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(body)
   }),
-  // PUT /api/bookings/{id}/cancel
-  cancel: (id) => request(BOOKING_BASE, `/api/bookings/${encodeURIComponent(id)}/cancel`, {
-    method: 'PUT'
+  cancel: (id) => request(ACTIVITY_BASE, `/api/activities/${id}`, {
+    method: 'DELETE'
   }),
-  // POST /api/bookings/{id}/refund
-  refund: (id) => request(BOOKING_BASE, `/api/bookings/${encodeURIComponent(id)}/refund`, {
-    method: 'POST'
+  join: (id, userId) => request(ACTIVITY_BASE, `/api/activities/${id}/join`, {
+    method: 'POST',
+    body: JSON.stringify({ userId })
   }),
-  // GET /api/bookings/facilities/search?sportType=&location=&timeSlotId=
-  // Booking-service proxies to Search Service; returns 503 if Search is down.
-  searchFacilities: (filters = {}) => request(
-    BOOKING_BASE, '/api/bookings/facilities/search' + buildQuery(filters)
-  )
+  leave: (id, userId) => request(ACTIVITY_BASE, `/api/activities/${id}/leave`, {
+    method: 'POST',
+    body: JSON.stringify({ userId })
+  }),
+  participants: (id) => request(ACTIVITY_BASE, `/api/activities/${id}/participants`),
+  removeParticipant: (activityId, userId) =>
+    request(ACTIVITY_BASE, `/api/activities/${activityId}/participants/${userId}`, {
+      method: 'DELETE'
+    })
 }
 
-export const searchApi = {
-  // GET /api/search?q=&entityType=&sportType=&location=&...
-  all: (filters = {}) => request(SEARCH_BASE, '/api/search' + buildQuery(filters)),
-  // GET /api/search/users?...
-  users: (filters = {}) => request(SEARCH_BASE, '/api/search/users' + buildQuery(filters)),
-  // GET /api/search/activities?...
-  activities: (filters = {}) => request(SEARCH_BASE, '/api/search/activities' + buildQuery(filters)),
-  // GET /api/search/facilities?facilityName=&sportType=&location=&sportCenterId=
-  // sportCenterId triggers a synchronous call to the Booking Service.
-  facilities: (filters = {}) => request(SEARCH_BASE, '/api/search/facilities' + buildQuery(filters)),
-  // POST /api/search/index
-  indexEntity: (body) => request(SEARCH_BASE, '/api/search/index', {
+export const schedulingApi = {
+  listAll: () => request(SCHEDULING_BASE, '/api/timeslots'),
+  listAvailable: () => request(SCHEDULING_BASE, '/api/timeslots/available'),
+  reserve: (body) => request(SCHEDULING_BASE, '/api/timeslots/reserve', {
     method: 'POST',
     body: JSON.stringify(body)
   }),
-  // GET /api/search/index/{entityType}/{entityId}
-  getIndex: (entityType, entityId) => request(
-    SEARCH_BASE, `/api/search/index/${encodeURIComponent(entityType)}/${encodeURIComponent(entityId)}`
-  ),
-  // DELETE /api/search/index/{entityType}/{entityId}
-  deleteIndex: (entityType, entityId) => request(
-    SEARCH_BASE, `/api/search/index/${encodeURIComponent(entityType)}/${encodeURIComponent(entityId)}`,
-    { method: 'DELETE' }
-  )
+  release: (slotId) => request(SCHEDULING_BASE, `/api/timeslots/${slotId}/release`, {
+    method: 'DELETE'
+  }),
+  getUserAvailability: (userId) =>
+    request(SCHEDULING_BASE, `/api/timeslots/users/${userId}/availability`),
+  updateUserAvailability: (userId, body) =>
+    request(SCHEDULING_BASE, `/api/timeslots/users/${userId}/availability`, {
+      method: 'PUT',
+      body: JSON.stringify(body)
+    }),
+  resolve: (userIds) => request(SCHEDULING_BASE, '/api/timeslots/resolve', {
+    method: 'POST',
+    body: JSON.stringify({ userIds })
+  })
 }
