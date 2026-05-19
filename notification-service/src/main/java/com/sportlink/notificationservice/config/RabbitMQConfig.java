@@ -18,16 +18,19 @@ public class RabbitMQConfig {
     public static final String DLX = "interaction-events.dlx";
 
     // ── Main queue names ───────────────────────────────────────────────────
-    public static final String USER_FOLLOWED_QUEUE  = "notification.user.followed";
-    public static final String COMMENT_POSTED_QUEUE = "notification.comment.posted";
+    public static final String USER_FOLLOWED_QUEUE    = "notification.user.followed";
+    public static final String COMMENT_POSTED_QUEUE   = "notification.comment.posted";
+    public static final String ACTIVITY_CREATED_QUEUE = "notification.activity.created";
 
     // ── Dead Letter Queue names ────────────────────────────────────────────
-    public static final String USER_FOLLOWED_DLQ  = "notification.user.followed.dlq";
-    public static final String COMMENT_POSTED_DLQ = "notification.comment.posted.dlq";
+    public static final String USER_FOLLOWED_DLQ    = "notification.user.followed.dlq";
+    public static final String COMMENT_POSTED_DLQ   = "notification.comment.posted.dlq";
+    public static final String ACTIVITY_CREATED_DLQ = "notification.activity.created.dlq";
 
-    // ── Routing keys (must match what Interaction Service publishes) ───────
-    public static final String USER_FOLLOWED_KEY  = "user.followed";
-    public static final String COMMENT_POSTED_KEY = "comment.posted";
+    // ── Routing keys (must match what publisher uses) ──────────────────────
+    public static final String USER_FOLLOWED_KEY    = "user.followed";
+    public static final String COMMENT_POSTED_KEY   = "comment.posted";
+    public static final String ACTIVITY_CREATED_KEY = "activity.created";
 
     // ── Exchanges ──────────────────────────────────────────────────────────
 
@@ -59,6 +62,14 @@ public class RabbitMQConfig {
                 .build();
     }
 
+    @Bean
+    public Queue activityCreatedQueue() {
+        return QueueBuilder.durable(ACTIVITY_CREATED_QUEUE)
+                .withArgument("x-dead-letter-exchange", DLX)
+                .withArgument("x-dead-letter-routing-key", ACTIVITY_CREATED_DLQ)
+                .build();
+    }
+
     // ── Dead Letter Queues (hold unprocessable messages for inspection) ────
 
     @Bean
@@ -69,6 +80,11 @@ public class RabbitMQConfig {
     @Bean
     public Queue commentPostedDlq() {
         return QueueBuilder.durable(COMMENT_POSTED_DLQ).build();
+    }
+
+    @Bean
+    public Queue activityCreatedDlq() {
+        return QueueBuilder.durable(ACTIVITY_CREATED_DLQ).build();
     }
 
     // ── Bindings ───────────────────────────────────────────────────────────
@@ -84,6 +100,11 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Binding activityCreatedBinding(Queue activityCreatedQueue, TopicExchange interactionExchange) {
+        return BindingBuilder.bind(activityCreatedQueue).to(interactionExchange).with(ACTIVITY_CREATED_KEY);
+    }
+
+    @Bean
     public Binding userFollowedDlqBinding(Queue userFollowedDlq, DirectExchange deadLetterExchange) {
         return BindingBuilder.bind(userFollowedDlq).to(deadLetterExchange).with(USER_FOLLOWED_DLQ);
     }
@@ -91,6 +112,11 @@ public class RabbitMQConfig {
     @Bean
     public Binding commentPostedDlqBinding(Queue commentPostedDlq, DirectExchange deadLetterExchange) {
         return BindingBuilder.bind(commentPostedDlq).to(deadLetterExchange).with(COMMENT_POSTED_DLQ);
+    }
+
+    @Bean
+    public Binding activityCreatedDlqBinding(Queue activityCreatedDlq, DirectExchange deadLetterExchange) {
+        return BindingBuilder.bind(activityCreatedDlq).to(deadLetterExchange).with(ACTIVITY_CREATED_DLQ);
     }
 
     // ── Message converter ──────────────────────────────────────────────────

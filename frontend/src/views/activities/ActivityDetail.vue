@@ -56,7 +56,7 @@
       </section>
 
       <!-- ============ EDIT ============ -->
-      <section v-if="canEdit">
+      <section v-if="isOrganizer && (activity.status === 'PLANNED' || activity.status === 'ACTIVE')">
         <h3>Edit Activity</h3>
         <label>Title</label>
         <input v-model="editForm.title" />
@@ -97,13 +97,13 @@
             <small class="joined-at">joined {{ formatDate(p.joinedAt) }}</small>
             <div class="participant-actions">
               <button
-                v-if="activity.status === 'COMPLETED' && p.userId !== currentUserId"
+                v-if="activity.status === 'COMPLETED' && p.userId !== authState.accountId"
                 class="btn-secondary small"
                 @click="toggleRating(p.userId)">
                 {{ ratingForUserId === p.userId ? 'Cancel Rating' : 'Rate' }}
               </button>
               <button
-                v-if="canRemoveParticipant(p)"
+                v-if="isOrganizer && p.role !== 'ORGANIZER' && activity.status !== 'COMPLETED'"
                 class="btn-danger small"
                 @click="removeParticipant(p.userId)">
                 Remove
@@ -117,39 +117,28 @@
       <section v-if="activity.status === 'COMPLETED' && ratingForUserId">
         <h3>Rate Participant: {{ profileFor(ratingForUserId)?.name || ratingForUserId }}</h3>
         <p class="muted">You are rating this user for their performance in "{{ activity.title }}"</p>
-
         <LeaveRating
-          v-if="currentUserId"
           :activityId="activityId"
-          :reviewerId="currentUserId"
+          :reviewerId="authState.accountId"
           :revieweeId="ratingForUserId"
           @rating-submitted="onRatingSubmitted"
         />
-        <p v-else class="error-msg">You must be logged in to leave a rating.</p>
       </section>
 
       <!-- ============ JOIN/LEAVE ============ -->
-      <section v-if="currentUserId && !isCurrentUserOrganizer && (activity.status === 'PLANNED' || activity.status === 'ACTIVE')">
+      <section v-if="authState.token && !isOrganizer && (activity.status === 'PLANNED' || activity.status === 'ACTIVE')">
         <div class="actions">
-          <button
-            v-if="!isParticipant"
-            class="btn-primary"
-            @click="joinActivity"
-            :disabled="actionLoading">
+          <button class="btn-primary" @click="joinActivity" :disabled="actionLoading">
             {{ actionLoading ? 'Joining…' : 'Join this event' }}
           </button>
-          <button
-            v-if="isParticipant"
-            class="btn-secondary"
-            @click="leaveActivity"
-            :disabled="actionLoading">
+          <button class="btn-secondary" @click="leaveActivity" :disabled="actionLoading">
             {{ actionLoading ? 'Leaving…' : 'Leave this event' }}
           </button>
         </div>
       </section>
 
       <!-- ============ CANCEL ============ -->
-      <section v-if="canCancel" class="danger-zone">
+      <section v-if="isOrganizer && activity.status !== 'CANCELLED' && activity.status !== 'COMPLETED'" class="danger-zone">
         <h3>Danger Zone</h3>
         <button class="btn-danger" @click="cancelActivity" :disabled="actionLoading">
           {{ actionLoading ? 'Cancelling…' : 'Cancel This Activity' }}
@@ -208,15 +197,16 @@
 
 <script>
 import LeaveRating from '@/views/ratings/LeaveRating.vue'
-import { activityApi, accountApi, commentApi } from '../../api/client'
-import { authState } from '../../store/authStore'
+import { activityApi, accountApi, commentApi } from '@/api/client'
+import { authState } from '@/store/authStore'
 
 export default {
   name: 'ActivityDetail',
-  components: { LeaveRating },
+  components: {
+    LeaveRating
+  },
   data() {
     return {
-      authState,
       activityId: this.$route.params.id,
       activity: null,
       organizer: null,
@@ -226,6 +216,7 @@ export default {
       actionLoading: false,
       error: null,
       success: null,
+      participantUserId: '',
       ratingForUserId: null,
       editForm: {
         title: '',
@@ -242,47 +233,23 @@ export default {
     }
   },
   computed: {
-    currentUserId() {
-      return this.authState.accountId
-    },
-    isModerator() {
-      return this.authState.role === 'MODERATOR'
-    },
-    isCurrentUserOrganizer() {
-      return this.activity && this.activity.organizerId === this.currentUserId
-    },
-    isParticipant() {
-      if (!this.activity || !this.currentUserId) return false
-      return this.activity.participants.some(p => p.userId === this.currentUserId)
-    },
-    canEdit() {
-      if (!this.activity) return false
-      if (this.activity.status !== 'PLANNED' && this.activity.status !== 'ACTIVE') return false
-      return this.isCurrentUserOrganizer || this.isModerator
-    },
-    canCancel() {
-      if (!this.activity) return false
-      if (this.activity.status === 'CANCELLED' || this.activity.status === 'COMPLETED') return false
-      return this.isCurrentUserOrganizer || this.isModerator
+    isOrganizer() {
+      return !!(authState.accountId && this.activity && this.activity.organizerId === authState.accountId)
     }
   },
   methods: {
-    canRemoveParticipant(p) {
-      if (!this.activity) return false
-      if (this.activity.status === 'COMPLETED') return false
-      if (p.role === 'ORGANIZER') return false
-      return this.isCurrentUserOrganizer || this.isModerator
-    },
-
+    // ... rest of methods
     toggleRating(userId) {
-      this.ratingForUserId = this.ratingForUserId === userId ? null : userId
+      if (this.ratingForUserId === userId) {
+        this.ratingForUserId = null
+      } else {
+        this.ratingForUserId = userId
+      }
     },
-
     onRatingSubmitted() {
       this.success = 'Rating submitted successfully!'
       this.ratingForUserId = null
     },
-
     async fetchActivity() {
       this.loading = true
       this.error = null
@@ -293,8 +260,6 @@ export default {
         this.editForm.description = data.description || ''
         this.editForm.maxParticipants = data.maxParticipants || 1
         this.editForm.preferredTimeSlotId = data.preferredTimeSlotId || ''
-
-        // Fetch organizer + participants profiles in parallel
         this.fetchOrganizer(data.organizerId)
         for (const p of data.participants) {
           this.fetchProfile(p.userId)
@@ -306,33 +271,27 @@ export default {
       }
     },
 
-    async fetchOrganizer(userId) {
+    fetchOrganizer(userId) {
       this.loadingOrganizer = true
-      try {
-        this.organizer = await this.fetchProfile(userId)
-      } finally {
-        this.loadingOrganizer = false
-      }
+      this.fetchProfile(userId)
+        .then(profile => { this.organizer = profile })
+        .finally(() => { this.loadingOrganizer = false })
     },
 
     async fetchProfile(userId) {
       if (this.profiles[userId]) return this.profiles[userId]
       try {
         const profile = await accountApi.getUser(userId)
-        if (profile) {
-          this.profiles = { ...this.profiles, [userId]: profile }
-        }
+        if (profile) this.profiles = { ...this.profiles, [userId]: profile }
         return profile
-      } catch (err) {
-        return null
-      }
+      } catch { return null }
     },
 
     profileFor(userId) {
       return this.profiles[userId]
     },
 
-    async updateActivity() {
+    updateActivity() {
       this.actionLoading = true
       this.error = null
       this.success = null
@@ -344,80 +303,70 @@ export default {
       if (this.editForm.preferredTimeSlotId) {
         body.preferredTimeSlotId = this.editForm.preferredTimeSlotId
       }
-      try {
-        await activityApi.update(this.activityId, body)
-        this.success = 'Activity updated.'
-        await this.fetchActivity()
-      } catch (err) {
-        if (!err.silent) this.error = err.message
-      } finally {
-        this.actionLoading = false
-      }
+      activityApi.update(this.activityId, body)
+        .then(() => {
+          this.success = 'Activity updated.'
+          this.fetchActivity()
+        })
+        .catch(err => { this.error = err.message })
+        .finally(() => { this.actionLoading = false })
     },
 
-    async cancelActivity() {
+    cancelActivity() {
       if (!confirm('Are you sure you want to cancel this activity?')) return
       this.actionLoading = true
       this.error = null
       this.success = null
-      try {
-        await activityApi.cancel(this.activityId)
-        this.success = 'Activity cancelled. Reserved slot will be released via Kafka.'
-        await this.fetchActivity()
-      } catch (err) {
-        if (!err.silent) this.error = err.message
-      } finally {
-        this.actionLoading = false
-      }
+      activityApi.cancel(this.activityId)
+        .then(() => {
+          this.success = 'Activity cancelled. Reserved slot will be released via Kafka.'
+          this.fetchActivity()
+        })
+        .catch(err => { this.error = err.message })
+        .finally(() => { this.actionLoading = false })
     },
 
-    async joinActivity() {
-      if (!this.currentUserId) { this.error = 'Sign in to join.'; return }
+    joinActivity() {
+      if (!authState.accountId) { this.error = 'Sign in to join.'; return }
       this.actionLoading = true
       this.error = null
       this.success = null
-      try {
-        await activityApi.join(this.activityId, this.currentUserId)
-        this.success = 'You joined the event!'
-        await this.fetchActivity()
-      } catch (err) {
-        if (!err.silent) this.error = err.message
-      } finally {
-        this.actionLoading = false
-      }
+      activityApi.join(this.activityId, authState.accountId)
+        .then(() => {
+          this.success = 'You joined the event!'
+          this.fetchActivity()
+        })
+        .catch(err => { this.error = err.message })
+        .finally(() => { this.actionLoading = false })
     },
 
-    async leaveActivity() {
-      if (!this.currentUserId) { this.error = 'Sign in to leave.'; return }
+    leaveActivity() {
+      if (!authState.accountId) { this.error = 'Sign in to leave.'; return }
       this.actionLoading = true
       this.error = null
       this.success = null
-      try {
-        await activityApi.leave(this.activityId, this.currentUserId)
-        this.success = 'You left the event.'
-        await this.fetchActivity()
-      } catch (err) {
-        if (!err.silent) this.error = err.message
-      } finally {
-        this.actionLoading = false
-      }
+      activityApi.leave(this.activityId, authState.accountId)
+        .then(() => {
+          this.success = 'You left the event.'
+          this.fetchActivity()
+        })
+        .catch(err => { this.error = err.message })
+        .finally(() => { this.actionLoading = false })
     },
 
-    async removeParticipant(userId) {
+    removeParticipant(userId) {
       const name = this.profileFor(userId)?.name || userId
       if (!confirm(`Remove participant ${name}?`)) return
       this.actionLoading = true
       this.error = null
       this.success = null
-      try {
-        await activityApi.removeParticipant(this.activityId, userId)
-        this.success = `Participant removed.`
-        await this.fetchActivity()
-      } catch (err) {
-        if (!err.silent) this.error = err.message
-      } finally {
-        this.actionLoading = false
-      }
+      activityApi.removeParticipant(this.activityId, userId)
+        .then(() => {
+          this.success = 'Participant removed.'
+          this.fetchActivity()
+        })
+        .catch(err => { this.error = err.message })
+        .finally(() => { this.actionLoading = false })
     },
 
     formatDate(iso) {
@@ -568,7 +517,6 @@ input {
   display: flex;
   gap: 10px;
   margin-top: 12px;
-  align-items: center;
 }
 button {
   background: #42b983;
@@ -605,9 +553,18 @@ button.small { padding: 4px 10px; font-size: 0.8em; margin-top: 0; }
 .error { background: #fadbd8; color: #c0392b; }
 .success { background: #d4efdf; color: #196f3d; }
 .loading { text-align: center; padding: 30px; }
+
+/* Rating Styles */
 .participant-actions {
   display: flex;
   gap: 8px;
+}
+.manual-reviewer {
+  margin-bottom: 20px;
+  background: #fff;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #d5dde0;
 }
 .error-msg {
   color: #e74c3c;

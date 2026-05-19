@@ -67,7 +67,9 @@ export default {
       return !!authState.token && authState.accountType === 'USER'
     },
     displayed() {
-      return this.activities.filter(a => this.followingIds.has(a.organizerId))
+      return this.activities.filter(a =>
+        this.followingIds.has(a.organizerId) || a.organizerId === authState.accountId
+      )
     }
   },
   methods: {
