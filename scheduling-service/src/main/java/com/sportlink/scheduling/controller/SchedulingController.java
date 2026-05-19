@@ -23,6 +23,7 @@ import com.sportlink.scheduling.dto.ResolveTimeSlotsRequest;
 import com.sportlink.scheduling.dto.TimeSlotDto;
 import com.sportlink.scheduling.dto.UpdateAvailabilityRequest;
 import com.sportlink.scheduling.service.SchedulingService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -54,6 +55,7 @@ public class SchedulingController {
     // ============================================================
 
     @GetMapping("/available")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "List available time slots in a date range")
     public List<TimeSlotDto> findAvailable(
             @RequestParam(required = false)
@@ -65,12 +67,14 @@ public class SchedulingController {
     }
 
     @GetMapping
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "List all time slots regardless of status")
     public List<TimeSlotDto> findAll() {
         return schedulingService.findAllSlots();
     }
 
     @PostMapping("/reserve")
+    @PreAuthorize("isAuthenticated()")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Reserve a time slot",
             description = "Creates a new slot in RESERVED status. "
@@ -80,6 +84,7 @@ public class SchedulingController {
     }
 
     @DeleteMapping("/{slotId}/release")
+    @PreAuthorize("isAuthenticated()")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Release a reserved time slot")
     public void release(@PathVariable UUID slotId) {
@@ -91,12 +96,14 @@ public class SchedulingController {
     // ============================================================
 
     @GetMapping("/users/{userId}/availability")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get a user's recurring availability windows")
     public List<AvailabilityWindowDto> getUserAvailability(@PathVariable UUID userId) {
         return schedulingService.getUserAvailability(userId);
     }
 
     @PutMapping("/users/{userId}/availability")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Replace a user's availability schedule with the new list")
     public List<AvailabilityWindowDto> updateUserAvailability(
             @PathVariable UUID userId,
@@ -105,6 +112,7 @@ public class SchedulingController {
     }
 
     @PostMapping("/resolve")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Find overlapping availability of multiple users",
             description = "Used by Matching Service to suggest meeting times "
                     + "for compatible users.")

@@ -28,13 +28,16 @@ public class SchedulingClient {
     private final WebClient.Builder webClientBuilder;
     private final String schedulingUrl;
     private final boolean mock;
+    private final com.sportlink.activitymanagement.security.AuthContext authContext;
 
     public SchedulingClient(WebClient.Builder webClientBuilder,
                             @Value("${sportlink.services.scheduling.url:http://localhost:8089}") String schedulingUrl,
-                            @Value("${sportlink.mock.dependencies:false}") boolean mock) {
+                            @Value("${sportlink.mock.dependencies:false}") boolean mock,
+                            com.sportlink.activitymanagement.security.AuthContext authContext) {
         this.webClientBuilder = webClientBuilder;
         this.schedulingUrl = schedulingUrl;
         this.mock = mock;
+        this.authContext = authContext;
     }
 
     /**
@@ -60,6 +63,10 @@ public class SchedulingClient {
             Map<String, Object> response = webClientBuilder.build()
                     .post()
                     .uri(schedulingUrl + "/api/timeslots/reserve")
+                    .headers(h -> {
+                        String bearer = authContext.currentBearerTokenOrNull();
+                        if (bearer != null) h.set("Authorization", bearer);
+                    })
                     .bodyValue(request)
                     .retrieve()
                     .bodyToMono(Map.class)

@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import com.sportlink.activitymanagement.dto.ActivityDto;
 import com.sportlink.activitymanagement.dto.CreateActivityRequest;
@@ -41,6 +42,7 @@ public class ActivityController {
 
     //  Activities
     @PostMapping
+    @PreAuthorize("isAuthenticated()")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create a new activity",
             description = "Validates the organizer via Account Management Service "
@@ -50,18 +52,21 @@ public class ActivityController {
     }
 
     @GetMapping
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "List all activities")
     public List<ActivityDto> getAllActivities() {
         return activityService.getAllActivities();
     }
 
     @GetMapping("/{activityId}")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get activity by ID, including participants")
     public ActivityDto getActivity(@PathVariable UUID activityId) {
         return activityService.getActivity(activityId);
     }
 
     @PutMapping("/{activityId}")
+    @PreAuthorize("hasRole('MODERATOR') or @activitySecurity.isOrganizer(#activityId, authentication.name)")
     @Operation(summary = "Update activity (organizer only)")
     public ActivityDto updateActivity(@PathVariable UUID activityId,
                                       @Valid @RequestBody UpdateActivityRequest request) {
@@ -69,6 +74,7 @@ public class ActivityController {
     }
 
     @DeleteMapping("/{activityId}")
+    @PreAuthorize("hasRole('MODERATOR') or @activitySecurity.isOrganizer(#activityId, authentication.name)")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Cancel activity (sets status = CANCELLED)")
     public void cancelActivity(@PathVariable UUID activityId) {
@@ -78,6 +84,7 @@ public class ActivityController {
     //  Participants
 
     @PostMapping("/{activityId}/join")
+    @PreAuthorize("isAuthenticated()")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Join an activity",
             description = "Validates the user, checks capacity, then enrolls them.")
@@ -88,6 +95,7 @@ public class ActivityController {
     }
 
     @PostMapping("/{activityId}/leave")
+    @PreAuthorize("isAuthenticated()")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Leave an activity")
     public void leaveActivity(@PathVariable UUID activityId,
@@ -97,12 +105,14 @@ public class ActivityController {
     }
 
     @GetMapping("/{activityId}/participants")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "List participants of an activity")
     public List<ParticipantDto> getParticipants(@PathVariable UUID activityId) {
         return activityService.getParticipants(activityId);
     }
 
     @DeleteMapping("/{activityId}/participants/{userId}")
+    @PreAuthorize("hasRole('MODERATOR') or @activitySecurity.isOrganizer(#activityId, authentication.name)")
     @Operation(summary = "Organizer removes a participant from the activity")
     public ResponseEntity<Void> removeParticipant(@PathVariable UUID activityId,
                                                   @PathVariable UUID userId) {
