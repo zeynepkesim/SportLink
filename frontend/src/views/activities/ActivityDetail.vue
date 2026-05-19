@@ -197,7 +197,7 @@
 
 <script>
 import LeaveRating from '@/views/ratings/LeaveRating.vue'
-import { commentApi } from '@/api/client'
+import { activityApi, accountApi, commentApi } from '@/api/client'
 import { authState } from '@/store/authStore'
 
 export default {
@@ -250,36 +250,25 @@ export default {
       this.success = 'Rating submitted successfully!'
       this.ratingForUserId = null
     },
-    fetchActivity() {
+    async fetchActivity() {
       this.loading = true
       this.error = null
-      fetch(`http://localhost:8083/api/activities/${this.activityId}`)
-        .then(async r => {
-          if (!r.ok) {
-            const err = await r.json().catch(() => ({}))
-            throw new Error(err.message || `HTTP ${r.status}`)
-          }
-          return r.json()
-        })
-        .then(data => {
-          this.activity = data
-          this.editForm.title = data.title || ''
-          this.editForm.description = data.description || ''
-          this.editForm.maxParticipants = data.maxParticipants || 1
-          this.editForm.preferredTimeSlotId = data.preferredTimeSlotId || ''
-
-          // Fetch profiles in parallel
-          this.fetchOrganizer(data.organizerId)
-          for (const p of data.participants) {
-            this.fetchProfile(p.userId)
-          }
-        })
-        .catch(err => {
-          this.error = err.message
-        })
-        .finally(() => {
-          this.loading = false
-        })
+      try {
+        const data = await activityApi.get(this.activityId)
+        this.activity = data
+        this.editForm.title = data.title || ''
+        this.editForm.description = data.description || ''
+        this.editForm.maxParticipants = data.maxParticipants || 1
+        this.editForm.preferredTimeSlotId = data.preferredTimeSlotId || ''
+        this.fetchOrganizer(data.organizerId)
+        for (const p of data.participants) {
+          this.fetchProfile(p.userId)
+        }
+      } catch (err) {
+        if (!err.silent) this.error = err.message
+      } finally {
+        this.loading = false
+      }
     },
 
     fetchOrganizer(userId) {
@@ -289,18 +278,13 @@ export default {
         .finally(() => { this.loadingOrganizer = false })
     },
 
-    // Cached fetch — never call Account Management twice for the same user
-    fetchProfile(userId) {
-      if (this.profiles[userId]) return Promise.resolve(this.profiles[userId])
-      return fetch(`http://localhost:8081/api/users/${userId}`)
-        .then(r => r.ok ? r.json() : null)
-        .then(profile => {
-          if (profile) {
-            this.profiles = { ...this.profiles, [userId]: profile }
-          }
-          return profile
-        })
-        .catch(() => null)
+    async fetchProfile(userId) {
+      if (this.profiles[userId]) return this.profiles[userId]
+      try {
+        const profile = await accountApi.getUser(userId)
+        if (profile) this.profiles = { ...this.profiles, [userId]: profile }
+        return profile
+      } catch { return null }
     },
 
     profileFor(userId) {
@@ -319,18 +303,7 @@ export default {
       if (this.editForm.preferredTimeSlotId) {
         body.preferredTimeSlotId = this.editForm.preferredTimeSlotId
       }
-      fetch(`http://localhost:8083/api/activities/${this.activityId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      })
-        .then(async r => {
-          if (!r.ok) {
-            const err = await r.json().catch(() => ({}))
-            throw new Error(err.message || `HTTP ${r.status}`)
-          }
-          return r.json()
-        })
+      activityApi.update(this.activityId, body)
         .then(() => {
           this.success = 'Activity updated.'
           this.fetchActivity()
@@ -344,15 +317,7 @@ export default {
       this.actionLoading = true
       this.error = null
       this.success = null
-      fetch(`http://localhost:8083/api/activities/${this.activityId}`, {
-        method: 'DELETE'
-      })
-        .then(async r => {
-          if (!r.ok && r.status !== 204) {
-            const err = await r.json().catch(() => ({}))
-            throw new Error(err.message || `HTTP ${r.status}`)
-          }
-        })
+      activityApi.cancel(this.activityId)
         .then(() => {
           this.success = 'Activity cancelled. Reserved slot will be released via Kafka.'
           this.fetchActivity()
@@ -366,18 +331,7 @@ export default {
       this.actionLoading = true
       this.error = null
       this.success = null
-      fetch(`http://localhost:8083/api/activities/${this.activityId}/join`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authState.token}` },
-        body: JSON.stringify({ userId: authState.accountId })
-      })
-        .then(async r => {
-          if (!r.ok) {
-            const err = await r.json().catch(() => ({}))
-            throw new Error(err.message || `HTTP ${r.status}`)
-          }
-          return r.json()
-        })
+      activityApi.join(this.activityId, authState.accountId)
         .then(() => {
           this.success = 'You joined the event!'
           this.fetchActivity()
@@ -391,17 +345,7 @@ export default {
       this.actionLoading = true
       this.error = null
       this.success = null
-      fetch(`http://localhost:8083/api/activities/${this.activityId}/leave`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authState.token}` },
-        body: JSON.stringify({ userId: authState.accountId })
-      })
-        .then(async r => {
-          if (!r.ok && r.status !== 204) {
-            const err = await r.json().catch(() => ({}))
-            throw new Error(err.message || `HTTP ${r.status}`)
-          }
-        })
+      activityApi.leave(this.activityId, authState.accountId)
         .then(() => {
           this.success = 'You left the event.'
           this.fetchActivity()
@@ -416,17 +360,9 @@ export default {
       this.actionLoading = true
       this.error = null
       this.success = null
-      fetch(`http://localhost:8083/api/activities/${this.activityId}/participants/${userId}`, {
-        method: 'DELETE'
-      })
-        .then(async r => {
-          if (!r.ok && r.status !== 204) {
-            const err = await r.json().catch(() => ({}))
-            throw new Error(err.message || `HTTP ${r.status}`)
-          }
-        })
+      activityApi.removeParticipant(this.activityId, userId)
         .then(() => {
-          this.success = `Participant removed.`
+          this.success = 'Participant removed.'
           this.fetchActivity()
         })
         .catch(err => { this.error = err.message })

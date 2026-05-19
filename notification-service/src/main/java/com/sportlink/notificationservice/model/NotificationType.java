@@ -5,5 +5,6 @@ public enum NotificationType {
     CANCELLATION,
     JOIN_LEAVE,
     FOLLOWER_UPDATE,
-    COMMENT_POSTED
+    COMMENT_POSTED,
+    ACTIVITY_CREATED
 }

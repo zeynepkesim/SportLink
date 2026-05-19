@@ -1,5 +1,6 @@
 package com.sportlink.notificationservice.event.consumer;
 
+import com.sportlink.notificationservice.client.InteractionServiceClient;
 import com.sportlink.notificationservice.config.RabbitMQConfig;
 import com.sportlink.notificationservice.model.Channel;
 import com.sportlink.notificationservice.model.Notification;
@@ -10,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -19,6 +21,7 @@ import java.util.UUID;
 public class InteractionEventConsumer {
 
     private final NotificationRepository notificationRepository;
+    private final InteractionServiceClient interactionServiceClient;
 
     @RabbitListener(queues = RabbitMQConfig.USER_FOLLOWED_QUEUE)
     public void handleUserFollowed(Map<String, Object> event) {
@@ -64,5 +67,27 @@ public class InteractionEventConsumer {
                         activityId, authorId))
                 .read(false)
                 .build());
+    }
+
+    @RabbitListener(queues = RabbitMQConfig.ACTIVITY_CREATED_QUEUE)
+    public void handleActivityCreated(Map<String, Object> event) {
+        UUID activityId  = UUID.fromString(event.get("activityId").toString());
+        UUID organizerId = UUID.fromString(event.get("organizerId").toString());
+        String title     = event.getOrDefault("title", "an activity").toString();
+        log.info("ActivityCreated: {} by organizer {}", activityId, organizerId);
+
+        List<UUID> followerIds = interactionServiceClient.getFollowerIds(organizerId);
+        for (UUID followerId : followerIds) {
+            notificationRepository.save(Notification.builder()
+                    .recipientId(followerId)
+                    .type(NotificationType.ACTIVITY_CREATED)
+                    .channel(Channel.IN_APP)
+                    .payload(String.format(
+                            "{\"activityId\":\"%s\",\"organizerId\":\"%s\",\"title\":\"%s\"}",
+                            activityId, organizerId, title.replace("\"", "\\\"")))
+                    .read(false)
+                    .build());
+        }
+        log.info("Notified {} followers about new activity {}", followerIds.size(), activityId);
     }
 }

@@ -184,6 +184,7 @@ services:
       SPORTLINK_SERVICES_SCHEDULING_URL: http://scheduling-service:8089
       SPORTLINK_MOCK_DEPENDENCIES: "false"
       SPORTLINK_JWT_SECRET: ${SPORTLINK_JWT_SECRET:-dev-only-shared-secret-please-replace-in-production-256-bit-min}
+      SPRING_RABBITMQ_HOST: sportlink-rabbitmq
     ports:
       - "8083:8083"
     networks:
