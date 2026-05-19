@@ -28,7 +28,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-      
   account-db:
     image: postgres:15
     container_name: sportlink-account-db
@@ -58,10 +57,17 @@ services:
     depends_on:
       account-db:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://account-db:5432/account_service_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPORTLINK_JWT_SECRET: ${SPORTLINK_JWT_SECRET:-dev-only-shared-secret-please-replace-in-production-256-bit-min}
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
+      JAVA_TOOL_OPTIONS: "-Duser.language=en -Duser.country=US"
     ports:
       - "8081:8081"
     networks:
@@ -98,11 +104,18 @@ services:
         condition: service_healthy
       account-service:
         condition: service_started
+      kafka:
+        condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://moderation-db:5432/moderation_service_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
       ACCOUNT_MANAGEMENT_BASE_URL: http://account-service:8081
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPORTLINK_JWT_SECRET: ${SPORTLINK_JWT_SECRET:-dev-only-shared-secret-please-replace-in-production-256-bit-min}
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
+      JAVA_TOOL_OPTIONS: "-Duser.language=en -Duser.country=US"
     ports:
       - "8090:8090"
     networks:

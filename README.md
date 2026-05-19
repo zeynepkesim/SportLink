@@ -12,6 +12,32 @@ Microservices-based platform for sports matchmaking, activity organization, and 
 | Kirill Ryrmak | Activity Management Service | Scheduling Service |
 | Muhammad Ahmed Khan | Interaction Service | Notification Service |
 
+## Quick Start
+
+Boot the whole stack (Kafka, both databases, both services) and the frontend:
+
+```bash
+docker compose up -d --build
+cd frontend && npm install && npm run serve
+```
+
+Then open:
+
+| URL | What |
+|---|---|
+| http://localhost:8080 | Vue frontend (sign in below) |
+| http://localhost:8081/swagger-ui/index.html | Account Management Swagger UI |
+| http://localhost:8090/swagger-ui/index.html | Moderation Swagger UI |
+
+Demo accounts seeded automatically (`DatabaseInitializer`):
+
+| Email | Password | Role |
+|---|---|---|
+| `moderator@sportlink.test` | `moderatorPass1` | MODERATOR |
+| `demo@sportlink.test` | `demoPassword1` | USER |
+| `organizer@sportlink.test` | `organizerPass1` | ORGANIZER |
+| `info@tartusportshall.test` | `facilityPass1` | FACILITY |
+
 ## Repository Layout
 
 ```
@@ -71,9 +97,10 @@ config/       — beans (PasswordEncoder, OpenAPI metadata)
 
 ### Sample Data
 
-On startup, `DatabaseInitializer` seeds the database with two demo users and one demo facility (only when the database is empty), so that GET endpoints can be demonstrated without a prior POST:
+On startup, `DatabaseInitializer` seeds the database with demo users and one demo facility (only when the database is empty), so that GET endpoints can be demonstrated without a prior POST:
 - `demo@sportlink.test` / `demoPassword1` (USER, INTERMEDIATE skill, Tartu)
 - `organizer@sportlink.test` / `organizerPass1` (ORGANIZER, ADVANCED skill, Tallinn)
+- `moderator@sportlink.test` / `moderatorPass1` (MODERATOR — used to exercise MODERATOR-only endpoints in the frontend and Swagger UI)
 - `info@tartusportshall.test` / `facilityPass1` (Tartu Sports Hall, badminton/basketball/volleyball)
 
 ### Run with Docker (recommended)
@@ -203,14 +230,61 @@ cd moderation-service
 ./mvnw clean spring-boot:run
 ```
 
+## Security: JWT Authentication & Role-Based Authorization (Zeynep)
+
+Both Account Management and Moderation are protected by Spring Security with a stateless JWT filter chain.
+
+- **Token issuance:** `POST /api/auth/login` returns an HS256-signed JWT containing `accountId`, `accountType` (`USER` / `FACILITY`), and `role` (`USER` / `ORGANIZER` / `MODERATOR`). Tokens expire after 12 hours by default.
+- **Token validation:** Both services share the same JWT secret (`SPORTLINK_JWT_SECRET` env var) and the same issuer claim. A `JwtAuthenticationFilter` extracts the bearer token, validates it, and seeds Spring's `SecurityContext` with a `ROLE_<role>` authority.
+- **Authorization:** Moderator-only endpoints (e.g. `PUT /api/users/{id}/status`, `PUT /api/cases/{id}/verdict`, `POST /api/sanctions`) carry `@PreAuthorize("hasRole('MODERATOR')")`. Public endpoints (login, register) are explicitly allow-listed.
+- **Token propagation across services:** When the Moderation Service calls Account Management on behalf of a moderator (`POST /api/sanctions` → `PUT /api/users/{id}/status`), it forwards the moderator's bearer token through `AccountManagementClient`, so authorization is enforced end-to-end.
+- **Error semantics:** A 401 from anywhere except `/api/auth/login` is treated as an expired session — the frontend clears its auth state and redirects to the login screen. A 401 from `/api/auth/login` itself is shown as an "Invalid email or password" inline error so the user can retry.
+- **Password hashing:** BCrypt at registration time; passwords are never stored or logged in plaintext.
+
+## Asynchronous Communication: Kafka Events (Zeynep)
+
+Both services publish and consume domain events through Apache Kafka, replacing the originally planned RabbitMQ design after a team-wide migration to Kafka (Olena owns the shared broker container).
+
+- **Producer (Account Management) → `account-events` topic** with subtype encoded in the message body:
+  - `USER_PROFILE_UPDATED` after a successful `PUT /api/users/{id}`
+  - `USER_STATUS_UPDATED` after a successful `PUT /api/users/{id}/status`
+  - `FACILITY_PROFILE_UPDATED` after a successful `PUT /api/sport-centers/{id}`
+- **Producer (Moderation) → `moderation-events` topic**:
+  - `USER_RESTRICTED` after `POST /api/sanctions` persists a sanction
+- **Consumer (Moderation):** A `@KafkaListener` on `account-events` filters down to `USER_STATUS_UPDATED` and logs it (so moderators can see when an account's status changes for any reason, not only as a result of a sanction).
+- **Topology:** Each topic has 3 partitions, replication factor 1 (local development). The Kafka record key is the event subtype, so all events of one type share a partition and preserve per-type ordering.
+- **Failure behavior:** Publication is fire-and-forget — `KafkaTemplate.send()` returns immediately and failures are logged but never roll back the HTTP request. This is intentional: the REST caller has already received a successful response by the time the event is published.
+
+Kafka topics are auto-provisioned on application startup via `KafkaAdmin` and `@Bean NewTopic`. To inspect events live during the demo:
+
+```bash
+docker exec -it sportlink-kafka kafka-console-consumer \
+  --bootstrap-server localhost:9092 \
+  --topic account-events --from-beginning --property print.key=true
+```
+
 ## Frontend (Vue 3)
 
-Shared single-page application at `frontend/`, built with Vue 3 and Vue Router. Each team member adds the views that exercise the endpoints of their backend services.
+Shared single-page application at `frontend/`, built with Vue 3 and Vue Router (Options API, no external state store). Each team member adds the views that exercise the endpoints of their backend services.
 
-Zeynep's views:
-- `views/account/Login.vue` — authenticates against `POST /api/auth/login` on the Account Management Service and displays the resulting account identity.
-- `views/moderation/Cases.vue` — lists moderation cases from `GET /api/cases` with content-type and verdict filters.
-- `views/moderation/ApplySanction.vue` — calls `POST /api/sanctions` on the Moderation Service, which in turn calls Account Management through the Resilience4j-protected client. The UI surfaces the `accountSyncStatus` (`SYNCED`, `PENDING_RETRY`, `FAILED`) so the resilience behavior is visible end-to-end.
+A central `api/client.js` wrapper injects the JWT `Authorization` header automatically, parses Spring's structured error responses (including the `details` array on validation failures), and on 401 clears the local auth state and redirects to the login screen with a toast. A small reactive `authStore` persists the session to `localStorage` so the login survives page reloads.
+
+Zeynep's views (every Account Management and Moderation endpoint is reachable from the UI):
+
+| View | Backend endpoint(s) |
+|---|---|
+| `views/account/Login.vue` | `POST /api/auth/login` |
+| `views/account/Register.vue` | `POST /api/users`, `POST /api/sport-centers` (User / Sport Center tabs) |
+| `views/account/UserProfile.vue` | `GET /api/users/{id}`, `PUT /api/users/{id}` |
+| `views/account/UpdateUserStatus.vue` | `PUT /api/users/{id}/status` (MODERATOR-only) |
+| `views/account/SportCenter.vue` | `GET /api/sport-centers/{id}`, `PUT /api/sport-centers/{id}` |
+| `views/moderation/Cases.vue` | `GET /api/cases` with content-type and verdict filters |
+| `views/moderation/CreateCase.vue` | `POST /api/cases` |
+| `views/moderation/CaseDetail.vue` | `GET /api/cases/{id}`, `PUT /api/cases/{id}/verdict`, `DELETE /api/content/{type}/{id}` (one-click content removal after a REMOVE_CONTENT verdict) |
+| `views/moderation/ApplySanction.vue` | `POST /api/sanctions` — surfaces the `accountSyncStatus` (`SYNCED`, `PENDING_RETRY`, `FAILED`) so the Resilience4j behavior is visible end-to-end |
+| `views/moderation/SanctionHistory.vue` | `GET /api/sanctions/{userId}` |
+
+Forms that operate on the signed-in account's own resources ("Profile", "Sport Center", "Create Case") expose a **Use mine** shortcut that autofills the UUID field from the JWT.
 
 ### Run frontend locally
 
@@ -220,7 +294,7 @@ npm install
 npm run serve
 ```
 
-The dev server runs at `http://localhost:8080` and the navigation links above route to each view.
+The dev server runs at `http://localhost:8080`. Sign in as `moderator@sportlink.test` / `moderatorPass1` to exercise the moderator-only endpoints, or register a new user from the Register page.
 
 ## CI / CD
 
