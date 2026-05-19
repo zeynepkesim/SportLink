@@ -55,7 +55,7 @@
 </template>
 
 <script>
-import { interactionApi } from '../../api/client'
+import { activityApi, accountApi, interactionApi } from '../../api/client'
 import { authState } from '../../store/authStore'
 
 export default {
@@ -93,13 +93,12 @@ export default {
       this.loading = true
       this.error = null
       try {
-        const data = await fetch('http://localhost:8083/api/activities').then(r => r.json())
-        this.activities = data
-        const uniqueOrganizers = [...new Set(data.map(a => a.organizerId))]
+        this.activities = await activityApi.list()
+        const uniqueOrganizers = [...new Set(this.activities.map(a => a.organizerId))]
         uniqueOrganizers.forEach(id => this.fetchProfile(id))
         if (this.isLoggedIn) this.loadFollowing()
       } catch (err) {
-        this.error = err.message
+        if (!err.silent) this.error = err.message
       } finally {
         this.loading = false
       }
@@ -112,14 +111,12 @@ export default {
         this.followingIds = new Set(ids)
       } catch { /* non-fatal */ }
     },
-    fetchProfile(userId) {
+    async fetchProfile(userId) {
       if (this.profiles[userId]) return
-      fetch(`http://localhost:8081/api/users/${userId}`)
-        .then(r => r.ok ? r.json() : null)
-        .then(profile => {
-          if (profile) this.profiles = { ...this.profiles, [userId]: profile }
-        })
-        .catch(() => {})
+      try {
+        const profile = await accountApi.getUser(userId)
+        this.profiles = { ...this.profiles, [userId]: profile }
+      } catch { /* show fallback name */ }
     },
     organizerName(userId) {
       return this.profiles[userId]?.name

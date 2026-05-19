@@ -2,45 +2,55 @@
   <div class="form">
     <h2>Create a New Activity</h2>
 
-    <label>Organizer ID (UUID of existing user)</label>
-    <input v-model="form.organizerId" placeholder="0501533d-7d11-4bab-9af5-d4fc889c213a" />
-
-    <label>Title</label>
-    <input v-model="form.title" placeholder="Saturday Football Match" />
-
-    <label>Sport Type</label>
-    <input v-model="form.sportType" placeholder="football" />
-
-    <label>Max Participants</label>
-    <input v-model.number="form.maxParticipants" type="number" min="1" />
-
-    <label>Description (optional)</label>
-    <input v-model="form.description" placeholder="Casual weekend game" />
-
-    <label>Preferred Time Slot ID (optional — triggers Scheduling reservation)</label>
-    <input v-model="form.preferredTimeSlotId" placeholder="11111111-1111-1111-1111-111111111111" />
-
-    <button @click="submit" :disabled="loading">
-      {{ loading ? 'Creating…' : 'Create Activity' }}
-    </button>
-
-    <div v-if="error" class="error">
-      <p><b>Error:</b> {{ error }}</p>
+    <div v-if="!authState.token" class="error">
+      <p>You must be <router-link to="/account/login">logged in</router-link> to create an activity.</p>
     </div>
 
-    <div v-if="success" class="success">
-      <p>✓ Activity created successfully! Redirecting…</p>
-    </div>
+    <template v-else>
+      <div class="organizer-info">
+        <small><b>Organizer:</b> {{ authState.email || authState.accountId }}</small>
+      </div>
+
+      <label>Title</label>
+      <input v-model="form.title" placeholder="Saturday Football Match" />
+
+      <label>Sport Type</label>
+      <input v-model="form.sportType" placeholder="football" />
+
+      <label>Max Participants</label>
+      <input v-model.number="form.maxParticipants" type="number" min="1" />
+
+      <label>Description (optional)</label>
+      <input v-model="form.description" placeholder="Casual weekend game" />
+
+      <label>Preferred Time Slot ID (optional — triggers Scheduling reservation)</label>
+      <input v-model="form.preferredTimeSlotId" placeholder="11111111-1111-1111-1111-111111111111" />
+
+      <button @click="submit" :disabled="loading || !canSubmit">
+        {{ loading ? 'Creating…' : 'Create Activity' }}
+      </button>
+
+      <div v-if="error" class="error">
+        <p><b>Error:</b> {{ error }}</p>
+      </div>
+
+      <div v-if="success" class="success">
+        <p>✓ Activity created successfully! Redirecting…</p>
+      </div>
+    </template>
   </div>
 </template>
 
 <script>
+import { activityApi } from '../../api/client'
+import { authState } from '../../store/authStore'
+
 export default {
   name: 'CreateActivity',
   data() {
     return {
+      authState,
       form: {
-        organizerId: '',
         title: '',
         sportType: '',
         maxParticipants: 10,
@@ -52,14 +62,19 @@ export default {
       success: false
     }
   },
+  computed: {
+    canSubmit() {
+      return this.form.title && this.form.sportType && this.form.maxParticipants > 0
+    }
+  },
   methods: {
-    submit() {
+    async submit() {
       this.error = null
       this.success = false
       this.loading = true
 
       const body = {
-        organizerId: this.form.organizerId,
+        organizerId: this.authState.accountId,
         title: this.form.title,
         sportType: this.form.sportType,
         maxParticipants: this.form.maxParticipants,
@@ -70,28 +85,15 @@ export default {
         body.preferredTimeSlotId = this.form.preferredTimeSlotId
       }
 
-      fetch('http://localhost:8083/api/activities', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      })
-        .then(async response => {
-          if (!response.ok) {
-            const err = await response.json().catch(() => ({}))
-            throw new Error(err.message || 'HTTP ' + response.status)
-          }
-          return response.json()
-        })
-        .then(() => {
-          this.success = true
-          setTimeout(() => this.$router.push('/activities'), 1200)
-        })
-        .catch(err => {
-          this.error = err.message
-        })
-        .finally(() => {
-          this.loading = false
-        })
+      try {
+        await activityApi.create(body)
+        this.success = true
+        setTimeout(() => this.$router.push('/activities'), 1200)
+      } catch (err) {
+        if (!err.silent) this.error = err.message
+      } finally {
+        this.loading = false
+      }
     }
   }
 }
@@ -110,6 +112,13 @@ export default {
 h2 {
   color: #2c3e50;
   text-align: center;
+}
+.organizer-info {
+  background: #eaf3fa;
+  color: #1f618d;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 10px;
 }
 label {
   display: block;
