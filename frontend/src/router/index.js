@@ -22,6 +22,9 @@ import ActivityDetail from '../views/activities/ActivityDetail.vue'
 import UserAvailability from '../views/scheduling/UserAvailability.vue'
 import ResolveSlots from '../views/scheduling/ResolveSlots.vue'
 import ActivitySuggestion from '../views/matching/ActivitySuggestion.vue'
+import CompatibilityCheck from '../views/matching/CompatibilityCheck.vue'
+import SuggestionManagement from '@/views/matching/SuggestionManagement.vue'
+
 
 const routes = [
   {
@@ -83,6 +86,32 @@ const routes = [
     name: 'UserRatings',
     component: UserRatings
   },
+  
+  {
+    path: '/matching/users',
+    name: 'UserSuggestion',
+    component: UserSuggestion
+  },
+  {
+    path: '/matching/activities',
+    name: 'ActivitySuggestion',
+    component: ActivitySuggestion
+  },
+  {
+    path: '/admin/ratings',
+    name: 'AdminRatings',
+    component: AdminRatings
+  },
+  {
+    path: '/matching/management',
+    name: 'SuggestionManagement',
+    component: SuggestionManagement
+  },
+  {
+    path: '/matching/compatibility',
+    name: 'CompatibilityCheck',
+    component: CompatibilityCheck
+  },
 
   // -----------------------------------------------------------------
   // Search Service - one route per REST endpoint in the controller.
@@ -101,21 +130,6 @@ const routes = [
     path: '/search/activities',
     name: 'ActivitySearch',
     component: ActivitySearch
-  },
-  {
-    path: '/matching/users',
-    name: 'UserSuggestion',
-    component: UserSuggestion
-  },
-  {
-    path: '/matching/activities',
-    name: 'ActivitySuggestion',
-    component: ActivitySuggestion
-  },
-  {
-    path: '/admin/ratings',
-    name: 'AdminRatings',
-    component: AdminRatings
   },
   {
     path: '/search/facilities',
