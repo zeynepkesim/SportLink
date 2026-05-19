@@ -35,6 +35,7 @@ import ActivitySuggestion from '../views/matching/ActivitySuggestion.vue'
 import CompatibilityCheck from '../views/matching/CompatibilityCheck.vue'
 import SuggestionManagement from '@/views/matching/SuggestionManagement.vue'
 import IndexEntity from '../views/search/IndexEntity.vue'
+import TestLeaveRatings from '@/views/ratings/TestLeaveRatings.vue'
 
 
 const routes = [
@@ -173,6 +174,11 @@ const routes = [
     path: '/matching/compatibility',
     name: 'CompatibilityCheck',
     component: CompatibilityCheck
+  },
+  {
+    path: '/test/leave-ratings',
+    name: 'TestLeaveRatings',
+    component: TestLeaveRatings
   },
 
   // -----------------------------------------------------------------

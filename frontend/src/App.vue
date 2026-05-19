@@ -82,6 +82,7 @@
           <span class="group-label">Ratings</span>
           <router-link to="/ratings">User Ratings</router-link>
           <router-link to="/admin/ratings">Admin</router-link>
+          <router-link to="/test/leave-ratings">Test Leave</router-link>
         </div>
       </nav>
     </header>

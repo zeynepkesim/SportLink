@@ -11,6 +11,9 @@
       <div class="success-icon">✓</div>
       <p class="success-title">Rating Submitted</p>
       <p class="success-sub">{{ revieweeId }} has been rated.</p>
+      <button class="reset-btn" @click="resetForm">
+        Submit Another
+      </button>
     </div>
 
     <!-- Already rated -->
@@ -84,11 +87,12 @@
 </template>
 
 <script>
+import { ratingApi } from '../../api/client'
+
 export default {
   name: 'LeaveRating',
 
   props: {
-    // All three must be provided by the parent event page
     activityId: {
       type: String,
       required: true
@@ -123,24 +127,41 @@ export default {
 
   methods: {
     validate() {
-      if (this.form.behaviorValue === 0) return 'Please rate behavior.'
-      if (!this.form.behaviorLabel) return 'Please select a behavior label.'
-      if (this.form.skillValue === 0) return 'Please rate skill.'
-      if (!this.form.skillLabel) return 'Please select a skill label.'
+      if (this.reviewerId.trim() === this.revieweeId.trim()) {
+        return 'Reviewer and reviewee cannot be the same person.'
+      }
+
+      if (this.form.behaviorValue === 0) {
+        return 'Please rate behavior.'
+      }
+
+      if (!this.form.behaviorLabel) {
+        return 'Please select a behavior label.'
+      }
+
+      if (this.form.skillValue === 0) {
+        return 'Please rate skill.'
+      }
+
+      if (!this.form.skillLabel) {
+        return 'Please select a skill label.'
+      }
+
       return null
     },
 
     async submitRating() {
       this.validationError = this.validate()
+
       if (this.validationError) return
 
       this.loading = true
       this.serverError = null
 
       const payload = {
-        reviewerId: this.reviewerId,
-        revieweeId: this.revieweeId,
-        activityId: this.activityId,
+        reviewerId: this.reviewerId.trim(),
+        revieweeId: this.revieweeId.trim(),
+        activityId: this.activityId.trim(),
         behaviorValue: this.form.behaviorValue,
         behaviorLabel: this.form.behaviorLabel,
         skillValue: this.form.skillValue,
@@ -148,32 +169,37 @@ export default {
       }
 
       try {
-        const res = await fetch('http://localhost:8082/api/ratings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        })
+        await ratingApi.createRating(payload)
 
-        if (res.status === 201) {
-          this.submitted = true
-          this.$emit('rating-submitted')
-          return
-        }
+        this.submitted = true
+        this.$emit('rating-submitted')
 
-        const body = await res.json().catch(() => ({}))
+      } catch (err) {
 
-        if (res.status === 400 && body.message?.includes('already')) {
+        if (err.message?.toLowerCase().includes('already')) {
           this.alreadyRated = true
           return
         }
 
-        this.serverError = body.message || `Unexpected error (HTTP ${res.status})`
-      } catch (err) {
-        this.serverError = 'Could not reach the rating service. Please try again.'
-        console.error(err)
+        this.serverError = err.message
+
       } finally {
         this.loading = false
       }
+    },
+
+    resetForm() {
+      this.form = {
+        behaviorValue: 0,
+        behaviorLabel: '',
+        skillValue: 0,
+        skillLabel: ''
+      }
+
+      this.submitted = false
+      this.alreadyRated = false
+      this.validationError = null
+      this.serverError = null
     }
   }
 }
@@ -182,19 +208,40 @@ export default {
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600&display=swap');
 
+.page-wrap {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 32px 24px;
+}
+
+.back-button {
+  background: none;
+  border: none;
+  color: #42e693;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 24px;
+}
+
+.back-button:hover {
+  text-decoration: underline;
+}
+
 .leave-rating {
   font-family: 'DM Sans', sans-serif;
-  background: #0f1117;
-  border: 1px solid #1e2330;
   border-radius: 16px;
   padding: 32px;
+  width: 100%;
   max-width: 540px;
-  color: #e8eaf0;
+  align-self: center;
 }
 
 /* Header */
 .rating-header {
-  position: relative;
   margin-bottom: 28px;
 }
 
@@ -211,14 +258,52 @@ export default {
   font-size: 1.5rem;
   font-weight: 400;
   margin: 0 0 4px;
-  color: #fff;
   letter-spacing: -0.01em;
 }
 
 .subtitle {
   font-size: 0.85rem;
-  color: #6b7280;
   margin: 0;
+}
+
+/* IDs section */
+.ids-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.field input {
+  border-radius: 8px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.88rem;
+  padding: 10px 12px;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.field input::placeholder {
+  color: #3a3f50;
+}
+
+.field input:focus {
+  outline: none;
+  border-color: #42e693;
 }
 
 /* Score section */
@@ -226,8 +311,6 @@ export default {
   display: flex;
   gap: 0;
   margin-bottom: 24px;
-  background: #161a24;
-  border: 1px solid #1e2330;
   border-radius: 12px;
   overflow: hidden;
 }
@@ -245,12 +328,10 @@ export default {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: #6b7280;
 }
 
 .divider-v {
   width: 1px;
-  background: #1e2330;
   margin: 12px 0;
 }
 
@@ -282,10 +363,7 @@ export default {
 
 /* Select */
 .label-select {
-  background: #0f1117;
-  border: 1px solid #1e2330;
   border-radius: 8px;
-  color: #e8eaf0;
   font-family: 'DM Sans', sans-serif;
   font-size: 0.82rem;
   padding: 8px 10px;
@@ -301,7 +379,7 @@ export default {
 }
 
 .label-select option {
-  background: #161a24;
+  color: #0a0d12;
 }
 
 /* Submit */
@@ -387,8 +465,24 @@ export default {
 .success-sub {
   font-size: 0.83rem;
   color: #6b7280;
-  margin: 0;
+  margin: 0 0 20px;
   word-break: break-all;
+}
+
+.reset-btn {
+  background: none;
+  border: 1px solid #1e2330;
+  border-radius: 8px;
+  color: #42e693;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.85rem;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.reset-btn:hover {
+  border-color: #42e693;
 }
 
 /* Info */
@@ -415,5 +509,22 @@ export default {
   font-size: 0.75rem;
   font-weight: 700;
   flex-shrink: 0;
+}
+
+@media (max-width: 500px) {
+  .page-wrap {
+    padding: 20px 16px;
+  }
+  .leave-rating {
+    padding: 24px 16px;
+  }
+  .score-section {
+    flex-direction: column;
+  }
+  .divider-v {
+    width: auto;
+    height: 1px;
+    margin: 0 12px;
+  }
 }
 </style>
