@@ -12,10 +12,14 @@ import router from '../router'
 
 const ACCOUNT_BASE = 'http://localhost:8081'
 const MODERATION_BASE = 'http://localhost:8090'
+const INTERACTION_BASE = 'http://localhost:8084'
+const NOTIFICATION_BASE = 'http://localhost:8085'
 const RATING_BASE = 'http://localhost:8082'
 const MATCHING_BASE = 'http://localhost:8087'
 const ACTIVITY_BASE = 'http://localhost:8083'
 const SCHEDULING_BASE = 'http://localhost:8089'
+const BOOKING_BASE = 'http://localhost:8088'
+const SEARCH_BASE = 'http://localhost:8086'
 
 async function request(baseUrl, path, options = {}) {
   // `optional: true` marks calls to teammates' services that may not accept
@@ -111,6 +115,7 @@ export const accountApi = {
     method: 'POST',
     body: JSON.stringify(body)
   }),
+  listUsers: (page = 0, size = 20) => request(ACCOUNT_BASE, `/api/users?page=${page}&size=${size}`),
   getUser: (id) => request(ACCOUNT_BASE, `/api/users/${id}`),
   updateUser: (id, body) => request(ACCOUNT_BASE, `/api/users/${id}`, {
     method: 'PUT',
@@ -125,6 +130,69 @@ export const accountApi = {
     method: 'PUT',
     body: JSON.stringify(body)
   })
+}
+
+// Interaction service uses X-User-Id header (not JWT) for identity
+function interactionRequest(path, options = {}, userId) {
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) }
+  if (userId) headers['X-User-Id'] = userId
+  return fetch(INTERACTION_BASE + path, { ...options, headers })
+    .then(async r => {
+      const text = await r.text()
+      const body = text ? safeJson(text) : null
+      if (!r.ok && r.status !== 204) throw new Error(body?.message || `HTTP ${r.status}`)
+      return body
+    })
+}
+
+export const interactionApi = {
+  followUser: (myId, targetUserId) =>
+    interactionRequest('/api/follows', {
+      method: 'POST',
+      body: JSON.stringify({ targetUserId })
+    }, myId),
+  unfollowUser: (myId, targetUserId) =>
+    interactionRequest(`/api/follows/${targetUserId}`, { method: 'DELETE' }, myId),
+  isFollowing: (myId, targetUserId) =>
+    interactionRequest(`/api/follows/check/${targetUserId}`, {}, myId),
+  getFollowing: (userId, size = 500) =>
+    interactionRequest(`/api/users/${userId}/following?size=${size}`, {})
+}
+
+export const commentApi = {
+  getComments: (activityId, page = 0, size = 50) =>
+    interactionRequest(`/api/activities/${activityId}/comments?page=${page}&size=${size}`),
+  postComment: (userId, activityId, body, activityOwnerId) =>
+    interactionRequest(`/api/activities/${activityId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ body, activityOwnerId })
+    }, userId),
+  deleteComment: (userId, userRole, commentId) =>
+    interactionRequest(`/api/comments/${commentId}`, {
+      method: 'DELETE',
+      headers: { 'X-User-Role': userRole || 'USER' }
+    }, userId)
+}
+
+function notificationRequest(path, options = {}, userId) {
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) }
+  if (userId) headers['X-User-Id'] = userId
+  return fetch(NOTIFICATION_BASE + path, { ...options, headers })
+    .then(async r => {
+      const text = await r.text()
+      const body = text ? safeJson(text) : null
+      if (!r.ok && r.status !== 204) throw new Error(body?.message || `HTTP ${r.status}`)
+      return body
+    })
+}
+
+export const notificationApi = {
+  getInbox: (userId, page = 0, size = 20) =>
+    notificationRequest(`/api/notifications?page=${page}&size=${size}`, {}, userId),
+  markRead: (userId, notificationId) =>
+    notificationRequest(`/api/notifications/${notificationId}/read`, { method: 'PATCH' }, userId),
+  markAllRead: (userId) =>
+    notificationRequest('/api/notifications/read-all', { method: 'POST' }, userId)
 }
 
 export const moderationApi = {
@@ -255,4 +323,43 @@ export const schedulingApi = {
     method: 'POST',
     body: JSON.stringify({ userIds })
   })
+}
+
+export const bookingApi = {
+  list: (filters = {}) => request(BOOKING_BASE, '/api/bookings' + buildQuery(filters)),
+  get: (id) => request(BOOKING_BASE, `/api/bookings/${encodeURIComponent(id)}`),
+  create: (body) => request(BOOKING_BASE, '/api/bookings', {
+    method: 'POST',
+    body: JSON.stringify(body)
+  }),
+  confirm: (id) => request(BOOKING_BASE, `/api/bookings/${encodeURIComponent(id)}/confirm`, {
+    method: 'PUT'
+  }),
+  cancel: (id) => request(BOOKING_BASE, `/api/bookings/${encodeURIComponent(id)}/cancel`, {
+    method: 'PUT'
+  }),
+  refund: (id) => request(BOOKING_BASE, `/api/bookings/${encodeURIComponent(id)}/refund`, {
+    method: 'POST'
+  }),
+  searchFacilities: (filters = {}) => request(
+    BOOKING_BASE, '/api/bookings/facilities/search' + buildQuery(filters)
+  )
+}
+
+export const searchApi = {
+  all: (filters = {}) => request(SEARCH_BASE, '/api/search' + buildQuery(filters)),
+  users: (filters = {}) => request(SEARCH_BASE, '/api/search/users' + buildQuery(filters)),
+  activities: (filters = {}) => request(SEARCH_BASE, '/api/search/activities' + buildQuery(filters)),
+  facilities: (filters = {}) => request(SEARCH_BASE, '/api/search/facilities' + buildQuery(filters)),
+  indexEntity: (body) => request(SEARCH_BASE, '/api/search/index', {
+    method: 'POST',
+    body: JSON.stringify(body)
+  }),
+  getIndex: (entityType, entityId) => request(
+    SEARCH_BASE, `/api/search/index/${encodeURIComponent(entityType)}/${encodeURIComponent(entityId)}`
+  ),
+  deleteIndex: (entityType, entityId) => request(
+    SEARCH_BASE, `/api/search/index/${encodeURIComponent(entityType)}/${encodeURIComponent(entityId)}`,
+    { method: 'DELETE' }
+  )
 }

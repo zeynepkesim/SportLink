@@ -13,6 +13,7 @@
               {{ authState.role }}
             </span>
           </span>
+          <NotificationBell />
           <button class="signout-btn" @click="signOut">Sign out</button>
         </template>
         <template v-else>
@@ -50,6 +51,7 @@
           <router-link to="/account/profile">Profile</router-link>
           <router-link to="/account/status">Status</router-link>
           <router-link to="/account/sport-center">Facility</router-link>
+          <router-link to="/account/users">All Users</router-link>
         </div>
 
         <div class="group moderation">
@@ -92,12 +94,13 @@
 
 <script>
 import Toaster from './components/Toaster.vue'
+import NotificationBell from './components/NotificationBell.vue'
 import { authState, clearAuth } from './store/authStore'
 import { toast } from './store/toastStore'
 
 export default {
   name: 'App',
-  components: { Toaster },
+  components: { Toaster, NotificationBell },
   data() {
     return { authState }
   },

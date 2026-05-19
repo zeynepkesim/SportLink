@@ -57,6 +57,14 @@ public class FollowController {
         followService.unfollowUser(currentUserId, targetUserId);
     }
 
+    @Operation(summary = "Check if the current user follows a target user")
+    @GetMapping("/follows/check/{targetUserId}")
+    public java.util.Map<String, Boolean> isFollowing(
+            @RequestHeader("X-User-Id") UUID currentUserId,
+            @PathVariable UUID targetUserId) {
+        return java.util.Map.of("following", followService.isFollowing(currentUserId, targetUserId));
+    }
+
     @Operation(summary = "List followers of a user",
             description = "Returns a paginated list of users who follow the specified user. Use ?page=0&size=20.")
     @ApiResponse(responseCode = "200", description = "Paginated list of followers")
