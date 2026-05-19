@@ -56,7 +56,28 @@
         <div v-if="submitError" class="error"><p>{{ submitError }}</p></div>
       </template>
 
-      <p v-else class="note">This case is already resolved.</p>
+      <template v-else>
+        <p class="note">This case is already resolved.</p>
+
+        <!-- Allow moderators to delete content after a REMOVE_CONTENT verdict. -->
+        <div v-if="caseInfo.verdict === 'REMOVE_CONTENT' && !contentRemoved" class="content-actions">
+          <button @click="removeContent" :disabled="removing" class="danger">
+            <Spinner v-if="removing" :size="14" inline />
+            <span>{{ removing ? 'Removing…' : 'Remove the content now' }}</span>
+          </button>
+          <p class="hint">
+            Sends <code>DELETE /api/content/{{ caseInfo.contentType }}/{{ caseInfo.reportedContentId }}</code>
+            to the owning service.
+          </p>
+        </div>
+
+        <div v-if="removeError" class="error"><p>{{ removeError }}</p></div>
+
+        <div v-if="contentRemoved" class="success">
+          <p>✓ Content removed.</p>
+          <p><small>{{ caseInfo.contentType }} <code>{{ caseInfo.reportedContentId }}</code></small></p>
+        </div>
+      </template>
     </template>
   </div>
 </template>
@@ -77,6 +98,7 @@ export default {
       moderatorId: '',
       loading: false, loadError: null,
       submitting: false, submitError: null,
+      removing: false, removeError: null, contentRemoved: false,
       authState
     }
   },
@@ -124,6 +146,19 @@ export default {
         if (!e.silent) toast.error(e.message)
       } finally {
         this.submitting = false
+      }
+    },
+    async removeContent() {
+      this.removing = true; this.removeError = null
+      try {
+        await moderationApi.removeContent(this.caseInfo.contentType, this.caseInfo.reportedContentId)
+        this.contentRemoved = true
+        toast.success('Content removed.')
+      } catch (e) {
+        this.removeError = e.message
+        if (!e.silent) toast.error(e.message)
+      } finally {
+        this.removing = false
       }
     }
   }
@@ -192,7 +227,15 @@ button.ghost {
   padding: 0 12px; min-width: 0; margin: 0; font-size: 0.85em;
 }
 button.ghost:hover { background: #f5edf8; }
+button.danger { background: #c0392b; }
+button.danger:hover { background: #a93226; }
 button:disabled { background: #aaa; cursor: not-allowed; }
 .error { background: #fadbd8; color: #c0392b; padding: 10px 14px; margin-top: 14px; border-radius: 6px; font-size: 0.9em; }
+.success { background: #d4efdf; color: #196f3d; padding: 10px 14px; margin-top: 14px; border-radius: 6px; }
 .note { color: #777; font-style: italic; }
+.content-actions { margin-top: 14px; }
+.hint { color: #888; font-size: 0.8em; margin: 8px 0 0; }
+.hint code, .success code {
+  background: #ecf0f1; padding: 1px 5px; border-radius: 4px; font-size: 0.95em;
+}
 </style>
