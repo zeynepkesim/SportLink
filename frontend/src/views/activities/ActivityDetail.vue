@@ -95,14 +95,42 @@
               </div>
             </div>
             <small class="joined-at">joined {{ formatDate(p.joinedAt) }}</small>
-            <button
-              v-if="p.role !== 'ORGANIZER'"
-              class="btn-danger small"
-              @click="removeParticipant(p.userId)">
-              Remove
-            </button>
+            <div class="participant-actions">
+              <button
+                v-if="activity.status === 'COMPLETED' && p.userId !== participantUserId"
+                class="btn-secondary small"
+                @click="toggleRating(p.userId)">
+                {{ ratingForUserId === p.userId ? 'Cancel Rating' : 'Rate' }}
+              </button>
+              <button
+                v-if="p.role !== 'ORGANIZER' && activity.status !== 'COMPLETED'"
+                class="btn-danger small"
+                @click="removeParticipant(p.userId)">
+                Remove
+              </button>
+            </div>
           </li>
         </ul>
+      </section>
+
+      <!-- ============ RATE PARTICIPANTS FORM ============ -->
+      <section v-if="activity.status === 'COMPLETED' && ratingForUserId">
+        <h3>Rate Participant: {{ profileFor(ratingForUserId)?.name || ratingForUserId }}</h3>
+        <p class="muted">You are rating this user for their performance in "{{ activity.title }}"</p>
+        
+        <div class="manual-reviewer">
+          <label>Your User ID (Reviewer)</label>
+          <input v-model="participantUserId" placeholder="Enter your User UUID" />
+        </div>
+
+        <LeaveRating 
+          v-if="participantUserId"
+          :activityId="activityId"
+          :reviewerId="participantUserId"
+          :revieweeId="ratingForUserId"
+          @rating-submitted="onRatingSubmitted"
+        />
+        <p v-else class="error-msg">Please enter your User ID above to leave a rating.</p>
       </section>
 
       <!-- ============ JOIN/LEAVE ============ -->
@@ -140,8 +168,13 @@
 </template>
 
 <script>
+import LeaveRating from '@/views/ratings/LeaveRating.vue'
+
 export default {
   name: 'ActivityDetail',
+  components: {
+    LeaveRating
+  },
   data() {
     return {
       activityId: this.$route.params.id,
@@ -154,6 +187,7 @@ export default {
       error: null,
       success: null,
       participantUserId: '',
+      ratingForUserId: null, // Track which user is being rated
       editForm: {
         title: '',
         description: '',
@@ -163,6 +197,18 @@ export default {
     }
   },
   methods: {
+    // ... rest of methods
+    toggleRating(userId) {
+      if (this.ratingForUserId === userId) {
+        this.ratingForUserId = null
+      } else {
+        this.ratingForUserId = userId
+      }
+    },
+    onRatingSubmitted() {
+      this.success = 'Rating submitted successfully!'
+      this.ratingForUserId = null
+    },
     fetchActivity() {
       this.loading = true
       this.error = null
@@ -489,4 +535,22 @@ button.small { padding: 4px 10px; font-size: 0.8em; margin-top: 0; }
 .error { background: #fadbd8; color: #c0392b; }
 .success { background: #d4efdf; color: #196f3d; }
 .loading { text-align: center; padding: 30px; }
+
+/* Rating Styles */
+.participant-actions {
+  display: flex;
+  gap: 8px;
+}
+.manual-reviewer {
+  margin-bottom: 20px;
+  background: #fff;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #d5dde0;
+}
+.error-msg {
+  color: #e74c3c;
+  font-weight: bold;
+  margin-top: 10px;
+}
 </style>
