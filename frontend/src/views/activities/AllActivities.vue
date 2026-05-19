@@ -41,6 +41,8 @@
 </template>
 
 <script>
+import { activityApi, accountApi } from '../../api/client'
+
 export default {
   name: 'AllActivities',
   data() {
@@ -52,42 +54,30 @@ export default {
     }
   },
   methods: {
-    fetchActivities() {
+    async fetchActivities() {
       this.loading = true
       this.error = null
-      fetch('http://localhost:8083/api/activities')
-        .then(async r => {
-          if (!r.ok) {
-            const err = await r.json().catch(() => ({}))
-            throw new Error(err.message || `HTTP ${r.status}`)
-          }
-          return r.json()
-        })
-        .then(data => {
-          this.activities = data
-          // Fetch organizer profiles in parallel
-          const uniqueOrganizers = [...new Set(data.map(a => a.organizerId))]
-          uniqueOrganizers.forEach(id => this.fetchProfile(id))
-        })
-        .catch(err => {
-          this.error = err.message
-          console.error(err)
-        })
-        .finally(() => {
-          this.loading = false
-        })
+      try {
+        this.activities = await activityApi.list()
+        // Fetch organizer profiles in parallel
+        const uniqueOrganizers = [...new Set(this.activities.map(a => a.organizerId))]
+        uniqueOrganizers.forEach(id => this.fetchProfile(id))
+      } catch (err) {
+        if (!err.silent) this.error = err.message
+        console.error(err)
+      } finally {
+        this.loading = false
+      }
     },
 
-    fetchProfile(userId) {
+    async fetchProfile(userId) {
       if (this.profiles[userId]) return
-      fetch(`http://localhost:8081/api/users/${userId}`)
-        .then(r => r.ok ? r.json() : null)
-        .then(profile => {
-          if (profile) {
-            this.profiles = { ...this.profiles, [userId]: profile }
-          }
-        })
-        .catch(() => { /* ignore — show fallback */ })
+      try {
+        const profile = await accountApi.getUser(userId)
+        this.profiles = { ...this.profiles, [userId]: profile }
+      } catch (err) {
+        // Profile not found — show fallback. Don't crash.
+      }
     },
 
     organizerName(userId) {

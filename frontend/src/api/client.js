@@ -14,6 +14,8 @@ const ACCOUNT_BASE = 'http://localhost:8081'
 const MODERATION_BASE = 'http://localhost:8090'
 const RATING_BASE = 'http://localhost:8082'
 const MATCHING_BASE = 'http://localhost:8087'
+const ACTIVITY_BASE = 'http://localhost:8083'
+const SCHEDULING_BASE = 'http://localhost:8089'
 
 async function request(baseUrl, path, options = {}) {
 // ... rest of request function
@@ -177,5 +179,57 @@ export const matchingApi = {
   },
   invalidateSuggestion: (suggestionId) => request(MATCHING_BASE, `/api/matching/suggestions/${suggestionId}`, {
     method: 'DELETE'
+  })
+}
+
+export const activityApi = {
+  list: () => request(ACTIVITY_BASE, '/api/activities'),
+  get: (id) => request(ACTIVITY_BASE, `/api/activities/${id}`),
+  create: (body) => request(ACTIVITY_BASE, '/api/activities', {
+    method: 'POST',
+    body: JSON.stringify(body)
+  }),
+  update: (id, body) => request(ACTIVITY_BASE, `/api/activities/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(body)
+  }),
+  cancel: (id) => request(ACTIVITY_BASE, `/api/activities/${id}`, {
+    method: 'DELETE'
+  }),
+  join: (id, userId) => request(ACTIVITY_BASE, `/api/activities/${id}/join`, {
+    method: 'POST',
+    body: JSON.stringify({ userId })
+  }),
+  leave: (id, userId) => request(ACTIVITY_BASE, `/api/activities/${id}/leave`, {
+    method: 'POST',
+    body: JSON.stringify({ userId })
+  }),
+  participants: (id) => request(ACTIVITY_BASE, `/api/activities/${id}/participants`),
+  removeParticipant: (activityId, userId) =>
+    request(ACTIVITY_BASE, `/api/activities/${activityId}/participants/${userId}`, {
+      method: 'DELETE'
+    })
+}
+
+export const schedulingApi = {
+  listAll: () => request(SCHEDULING_BASE, '/api/timeslots'),
+  listAvailable: () => request(SCHEDULING_BASE, '/api/timeslots/available'),
+  reserve: (body) => request(SCHEDULING_BASE, '/api/timeslots/reserve', {
+    method: 'POST',
+    body: JSON.stringify(body)
+  }),
+  release: (slotId) => request(SCHEDULING_BASE, `/api/timeslots/${slotId}/release`, {
+    method: 'DELETE'
+  }),
+  getUserAvailability: (userId) =>
+    request(SCHEDULING_BASE, `/api/timeslots/users/${userId}/availability`),
+  updateUserAvailability: (userId, body) =>
+    request(SCHEDULING_BASE, `/api/timeslots/users/${userId}/availability`, {
+      method: 'PUT',
+      body: JSON.stringify(body)
+    }),
+  resolve: (userIds) => request(SCHEDULING_BASE, '/api/timeslots/resolve', {
+    method: 'POST',
+    body: JSON.stringify({ userIds })
   })
 }
