@@ -14,13 +14,8 @@ const ACCOUNT_BASE = 'http://localhost:8081'
 const MODERATION_BASE = 'http://localhost:8090'
 const RATING_BASE = 'http://localhost:8082'
 const MATCHING_BASE = 'http://localhost:8087'
-<<<<<<< HEAD
 const ACTIVITY_BASE = 'http://localhost:8083'
 const SCHEDULING_BASE = 'http://localhost:8089'
-=======
-const BOOKING_BASE = 'http://localhost:8088'
-const SEARCH_BASE = 'http://localhost:8086'
->>>>>>> 5ae5269a9fa3d3909c2aa97a0f53bbf4469b5d0b
 
 async function request(baseUrl, path, options = {}) {
 // ... rest of request function
