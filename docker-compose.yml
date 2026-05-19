@@ -29,6 +29,23 @@ services:
       timeout: 5s
       retries: 10
 
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: sportlink-rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - sportlink-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   account-db:
     image: postgres:15
     container_name: sportlink-account-db
@@ -184,7 +201,7 @@ services:
       SPORTLINK_SERVICES_SCHEDULING_URL: http://scheduling-service:8089
       SPORTLINK_MOCK_DEPENDENCIES: "false"
       SPORTLINK_JWT_SECRET: ${SPORTLINK_JWT_SECRET:-dev-only-shared-secret-please-replace-in-production-256-bit-min}
-      SPRING_RABBITMQ_HOST: sportlink-rabbitmq
+      SPRING_RABBITMQ_HOST: rabbitmq
     ports:
       - "8083:8083"
     networks:
@@ -388,6 +405,94 @@ services:
     networks:
       - sportlink-network
 
+  interaction-db:
+    image: postgres:15
+    container_name: sportlink-interaction-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: interaction_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5435:5432"
+    volumes:
+      - interaction-db-data:/var/lib/postgresql/data
+    networks:
+      - sportlink-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d interaction_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  interaction-service:
+    build:
+      context: ./interaction-service
+      dockerfile: Dockerfile
+    container_name: sportlink-interaction-service
+    restart: unless-stopped
+    depends_on:
+      interaction-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      account-service:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://interaction-db:5432/interaction_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_RABBITMQ_HOST: rabbitmq
+      ACCOUNT_MANAGEMENT_URL: http://account-service:8081
+    ports:
+      - "8084:8084"
+    networks:
+      - sportlink-network
+
+  notification-db:
+    image: postgres:15
+    container_name: sportlink-notification-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: notification_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5436:5432"
+    volumes:
+      - notification-db-data:/var/lib/postgresql/data
+    networks:
+      - sportlink-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d notification_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    container_name: sportlink-notification-service
+    restart: unless-stopped
+    depends_on:
+      notification-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      interaction-service:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://notification-db:5432/notification_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPORTLINK_SERVICES_INTERACTION_URL: http://interaction-service:8084
+    ports:
+      - "8085:8085"
+    networks:
+      - sportlink-network
+
 volumes:
   account-db-data:
   moderation-db-data:
@@ -397,6 +502,9 @@ volumes:
   rating-db-data:
   matching-db-data:
   search-db-data:
+  interaction-db-data:
+  notification-db-data:
+  rabbitmq-data:
 
 networks:
   sportlink-network:
