@@ -25,6 +25,7 @@ import AllBookings from '../views/bookings/AllBookings.vue'
 import CreateBooking from '../views/bookings/CreateBooking.vue'
 import BookingFacilitySearch from '../views/bookings/BookingFacilitySearch.vue'
 import AdminRatings from '../views/ratings/AdminRatings.vue'
+import RatingDetail from '../views/ratings/RatingDetail.vue'
 import ActivityDetail from '../views/activities/ActivityDetail.vue'
 import UserAvailability from '../views/scheduling/UserAvailability.vue'
 import ResolveSlots from '../views/scheduling/ResolveSlots.vue'
@@ -143,6 +144,11 @@ const routes = [
     path: '/admin/ratings',
     name: 'AdminRatings',
     component: AdminRatings
+  },
+  {
+    path: '/ratings/detail/:ratingId',
+    name: 'RatingDetail',
+    component: RatingDetail
   },
   {
     path: '/matching/management',

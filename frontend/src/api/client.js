@@ -12,8 +12,10 @@ import router from '../router'
 
 const ACCOUNT_BASE = 'http://localhost:8081'
 const MODERATION_BASE = 'http://localhost:8090'
+const RATING_BASE = 'http://localhost:8082'
 
 async function request(baseUrl, path, options = {}) {
+// ... rest of request function
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) }
   if (authState.token) {
     headers.Authorization = `Bearer ${authState.token}`
@@ -125,5 +127,12 @@ export const moderationApi = {
   getSanctionHistory: (userId) => request(MODERATION_BASE, `/api/sanctions/${userId}`),
   removeContent: (contentType, contentId) => request(MODERATION_BASE, `/api/content/${contentType}/${contentId}`, {
     method: 'DELETE'
+  })
+}
+
+export const ratingApi = {
+  getReputation: (userId) => request(RATING_BASE, `/api/reputations/${userId}`),
+  recomputeReputation: (userId) => request(RATING_BASE, `/api/reputations/${userId}/recompute`, {
+    method: 'POST'
   })
 }

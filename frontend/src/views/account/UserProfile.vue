@@ -25,14 +25,42 @@
 
     <template v-if="profile">
       <hr />
-      <p class="readonly">
-        <small>
-          <b>Name:</b> {{ profile.name }}<br />
-          <b>Email:</b> {{ profile.email }}<br />
-          <b>Role:</b> {{ profile.role }}<br />
-          <b>Status:</b> {{ profile.status }}
-        </small>
-      </p>
+      <div class="profile-header">
+        <p class="readonly">
+          <small>
+            <b>Name:</b> {{ profile.name }}<br />
+            <b>Email:</b> {{ profile.email }}<br />
+            <b>Role:</b> {{ profile.role }}<br />
+            <b>Status:</b> {{ profile.status }}
+          </small>
+        </p>
+
+        <!-- ============ REPUTATION ============ -->
+        <div v-if="reputation" class="reputation-card">
+          <div class="reputation-score">
+            <span class="score-value">{{ reputation.averageScore.toFixed(1) }}</span>
+            <span class="score-label">{{ reputation.userLabel }}</span>
+          </div>
+          <div class="reputation-meta">
+            <span>{{ reputation.totalRatings }} ratings</span>
+            <button 
+              v-if="isModerator" 
+              @click="recomputeReputation" 
+              class="ghost small"
+              :disabled="loading"
+            >Recompute</button>
+          </div>
+        </div>
+        <div v-else class="reputation-card empty">
+          <p>No reputation data available yet.</p>
+          <button 
+            v-if="isModerator" 
+            @click="recomputeReputation" 
+            class="ghost small"
+            :disabled="loading"
+          >Initialize</button>
+        </div>
+      </div>
 
       <h3>Update fields</h3>
 
@@ -77,8 +105,8 @@
 </template>
 
 <script>
-import { accountApi } from '../../api/client'
-import { authState } from '../../store/authStore'
+import { accountApi, ratingApi } from '../../api/client'
+import { authState, authState as authStore } from '../../store/authStore'
 import { toast } from '../../store/toastStore'
 import Spinner from '../../components/Spinner.vue'
 
@@ -89,6 +117,7 @@ export default {
     return {
       userId: '',
       profile: null,
+      reputation: null,
       updates: {
         name: '', phone: '', other: '', skillLevel: null,
         language: '', sportPreferences: '', city: '', district: ''
@@ -102,6 +131,9 @@ export default {
   computed: {
     canUseMyId() {
       return authState.token && authState.accountType === 'USER' && authState.accountId
+    },
+    isModerator() {
+      return authState.accountType === 'MODERATOR'
     }
   },
   mounted() {
@@ -116,9 +148,14 @@ export default {
       this.userId = authState.accountId
     },
     async fetchUser() {
-      this.loading = true; this.loadError = null; this.profile = null
+      this.loading = true; this.loadError = null; this.profile = null; this.reputation = null
       try {
-        this.profile = await accountApi.getUser(this.userId)
+        const [profile, reputation] = await Promise.all([
+          accountApi.getUser(this.userId),
+          ratingApi.getReputation(this.userId).catch(() => null)
+        ])
+        this.profile = profile
+        this.reputation = reputation
         this.updates = {
           name: this.profile.name || '',
           phone: this.profile.phone || '',
@@ -132,6 +169,17 @@ export default {
       } catch (e) {
         this.loadError = e.message
         if (!e.silent) toast.error(e.message)
+      } finally {
+        this.loading = false
+      }
+    },
+    async recomputeReputation() {
+      this.loading = true
+      try {
+        this.reputation = await ratingApi.recomputeReputation(this.userId)
+        toast.success('Reputation recomputed.')
+      } catch (e) {
+        toast.error('Failed to recompute: ' + e.message)
       } finally {
         this.loading = false
       }
@@ -193,4 +241,61 @@ button:disabled { background: #aaa; cursor: not-allowed; }
 .readonly { background: #eaf3fa; padding: 10px 14px; border-radius: 6px; }
 .error { background: #fadbd8; color: #c0392b; padding: 10px 14px; margin-top: 14px; border-radius: 6px; font-size: 0.9em; }
 hr { border: none; border-top: 1px solid #eee; margin: 20px 0; }
+
+.profile-header {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.profile-header > p { flex: 1; min-width: 200px; }
+
+.reputation-card {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 10px;
+  padding: 16px;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.reputation-card.empty {
+  color: #6c757d;
+  font-size: 0.85em;
+  text-align: center;
+}
+.reputation-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.score-value {
+  font-size: 2em;
+  font-weight: bold;
+  color: #2c3e50;
+  line-height: 1;
+}
+.score-label {
+  font-size: 0.75em;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: #3498db;
+  letter-spacing: 1px;
+}
+.reputation-meta {
+  font-size: 0.8em;
+  color: #6c757d;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+button.small {
+  padding: 4px 8px;
+  min-width: 0;
+  font-size: 0.8em;
+  margin-top: 4px;
+}
 </style>

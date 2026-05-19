@@ -27,11 +27,22 @@
           <router-link to="/activities">All</router-link>
           <router-link to="/activities/new">Create</router-link>
         </div>
+
         <div class="group">
           <span class="group-label">Scheduling</span>
           <router-link to="/slots">Slots</router-link>
           <router-link to="/slots/reserve">Reserve</router-link>
+          <router-link to="/slots/availability">Availability</router-link>
+          <router-link to="/slots/resolve">Resolve</router-link>
         </div>
+
+        <div class="group">
+          <span class="group-label">Bookings</span>
+          <router-link to="/bookings">All</router-link>
+          <router-link to="/bookings/new">Create</router-link>
+          <router-link to="/bookings/facilities">Facilities</router-link>
+        </div>
+
         <div class="group account">
           <span class="group-label">Account</span>
           <router-link to="/account/login">Login</router-link>
@@ -40,6 +51,7 @@
           <router-link to="/account/status">Status</router-link>
           <router-link to="/account/sport-center">Facility</router-link>
         </div>
+
         <div class="group moderation">
           <span class="group-label">Moderation</span>
           <router-link to="/moderation/cases">Cases</router-link>
@@ -47,10 +59,28 @@
           <router-link to="/moderation/sanctions/new">Sanction</router-link>
           <router-link to="/moderation/sanctions/history">History</router-link>
         </div>
+
         <div class="group">
-          <span class="group-label">Other</span>
-          <router-link to="/ratings">Ratings</router-link>
-          <router-link to="/search/facilities">Search</router-link>
+          <span class="group-label">Matching</span>
+          <router-link to="/matching/users">Users</router-link>
+          <router-link to="/matching/activities">Activities</router-link>
+          <router-link to="/matching/compatibility">Compatibility</router-link>
+          <router-link to="/matching/management">Management</router-link>
+        </div>
+
+        <div class="group">
+          <span class="group-label">Search</span>
+          <router-link to="/search">Global</router-link>
+          <router-link to="/search/users">Users</router-link>
+          <router-link to="/search/activities">Activities</router-link>
+          <router-link to="/search/facilities">Facilities</router-link>
+          <router-link to="/search/index">Index</router-link>
+        </div>
+
+        <div class="group">
+          <span class="group-label">Ratings</span>
+          <router-link to="/ratings">User Ratings</router-link>
+          <router-link to="/admin/ratings">Admin</router-link>
         </div>
       </nav>
     </header>
