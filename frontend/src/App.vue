@@ -59,22 +59,21 @@
           <router-link to="/moderation/sanctions/new">Sanction</router-link>
           <router-link to="/moderation/sanctions/history">History</router-link>
         </div>
-
+        <div class="group search">
+          <span class="group-label">Search</span>
+          <router-link to="/search">Search</router-link>
+          <router-link to="/search/users">Users</router-link>
+          <router-link to="/search/activities">Activities</router-link>
+          <router-link to="/search/facilities">Facilities</router-link>
+          <router-link to="/search/index">Index Maintenance</router-link>
+          <router-link to="/search/index/new">Add to Index</router-link>
+        </div>
         <div class="group">
           <span class="group-label">Matching</span>
           <router-link to="/matching/users">Users</router-link>
           <router-link to="/matching/activities">Activities</router-link>
           <router-link to="/matching/compatibility">Compatibility</router-link>
           <router-link to="/matching/management">Management</router-link>
-        </div>
-
-        <div class="group">
-          <span class="group-label">Search</span>
-          <router-link to="/search">Global</router-link>
-          <router-link to="/search/users">Users</router-link>
-          <router-link to="/search/activities">Activities</router-link>
-          <router-link to="/search/facilities">Facilities</router-link>
-          <router-link to="/search/index">Index</router-link>
         </div>
 
         <div class="group">

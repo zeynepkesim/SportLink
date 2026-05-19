@@ -1,6 +1,7 @@
 <template>
   <div class="bookings">
-    <h2>Bookings</h2>
+    <h2>All Bookings</h2>
+
     <form class="filters" @submit.prevent="fetchBookings">
       <div class="row">
         <label>
@@ -20,60 +21,45 @@
             <option value="CANCELLED">CANCELLED</option>
           </select>
         </label>
-        <label>
-          Booking ID (lookup)
-          <input v-model="lookupId" type="text" placeholder="e.g. bk-001" />
-          <small class="hint">fetches GET /api/bookings/{id}</small>
-        </label>
       </div>
       <div class="actions">
         <button type="submit" :disabled="loading">
           {{ loading ? 'Loading…' : 'Search' }}
-        </button>
-        <button type="button" class="secondary" @click="lookupById" :disabled="!lookupId || loading">
-          Lookup by ID
         </button>
         <button type="button" class="secondary" @click="clearFilters">Clear</button>
         <router-link class="primary-link" to="/bookings/new">+ New Booking</router-link>
       </div>
     </form>
 
-    <div v-if="lastUrl" class="last-url">
-      <small><b>{{ lastMethod }}</b> <code>{{ lastUrl }}</code></small>
-    </div>
-
-    <div v-if="loading" class="loading">Loading…</div>
+    <div v-if="loading" class="loading">Loading...</div>
 
     <div v-else-if="error" class="error">
-      <p><b>Error:</b> {{ error }}</p>
+      <p>{{ error }}</p>
       <button @click="fetchBookings">Retry</button>
     </div>
 
     <div v-else-if="bookings.length === 0" class="empty">
-      <p>No bookings match the filters.</p>
+      <p>No bookings match the filters. <router-link to="/bookings/new">Create one</router-link>!</p>
     </div>
 
     <div v-else>
       <p class="count">Found <b>{{ bookings.length }}</b> booking(s)</p>
       <div class="item" v-for="b in bookings" :key="b.bookingId">
-        <div class="item-head">
-          <h3>Booking {{ b.bookingId }}</h3>
+        <h3>
+          <router-link :to="'/bookings/' + b.bookingId" class="title-link">
+            Booking {{ b.bookingId }}
+          </router-link>
+        </h3>
+        <div class="meta">
           <span class="badge" :class="'status-' + b.bookingStatus.toLowerCase()">
             {{ b.bookingStatus }}
           </span>
+          <span class="sport">📍 {{ b.sportCenterId }}</span>
+          <span class="sport">🏃 {{ b.activityId }}</span>
+          <span class="sport">🕒 {{ b.timeSlotId }}</span>
         </div>
-
-        <div class="meta">
-          <span>📍 Center: <b>{{ b.sportCenterId }}</b></span>
-          <span>🏃 Activity: <b>{{ b.activityId }}</b></span>
-          <span>🕒 Slot: <b>{{ b.timeSlotId }}</b></span>
-          <span v-if="b.createdAt" class="created">
-            Created {{ formatTime(b.createdAt) }}
-          </span>
-        </div>
-
-        <div v-if="b.payment" class="payment">
-          <b>Payment</b> &mdash;
+        <p v-if="b.payment" class="payment-line">
+          <b>Payment:</b>
           <span class="badge-small" :class="'pay-' + (b.payment.paymentStatus || '').toLowerCase()">
             {{ b.payment.paymentStatus }}
           </span>
@@ -83,43 +69,17 @@
           <span v-if="b.payment.paymentMethod">
             via {{ b.payment.paymentMethod }}
           </span>
-          <span v-if="b.payment.paidAt"> &middot; paid {{ formatTime(b.payment.paidAt) }}</span>
-          <span v-if="b.payment.refundedAt"> &middot; refunded {{ formatTime(b.payment.refundedAt) }}</span>
-        </div>
-
-        <!-- Per-booking action buttons -->
-        <div class="row-actions">
-          <button
-            class="action"
-            :disabled="b.bookingStatus !== 'PENDING' || busy[b.bookingId]"
-            @click="confirmBooking(b)">
-            Confirm
-          </button>
-          <button
-            class="action danger"
-            :disabled="b.bookingStatus === 'CANCELLED' || busy[b.bookingId]"
-            @click="cancelBooking(b)">
-            Cancel
-          </button>
-          <button
-            class="action warn"
-            :disabled="!canRefund(b) || busy[b.bookingId]"
-            @click="refundBooking(b)">
-            Refund
-          </button>
-        </div>
-
-        <div v-if="actionMessages[b.bookingId]" class="action-msg"
-             :class="{ ok: actionStatus[b.bookingId] === 'ok', err: actionStatus[b.bookingId] === 'err' }">
-          {{ actionMessages[b.bookingId] }}
-        </div>
+        </p>
+        <p class="created-line" v-if="b.createdAt">
+          <b>Created:</b> {{ formatDate(b.createdAt) }}
+        </p>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-const BOOKING_BASE = 'http://localhost:8088'
+import { bookingApi } from '../../api/client'
 
 export default {
   name: 'AllBookings',
@@ -130,149 +90,42 @@ export default {
         sportCenterId: '',
         bookingStatus: ''
       },
-      lookupId: '',
       bookings: [],
       loading: false,
-      error: null,
-      lastUrl: null,
-      lastMethod: 'GET',
-      busy: {},
-      actionMessages: {},
-      actionStatus: {}
+      error: null
     }
   },
   methods: {
-    // ----- GET /api/bookings (+ optional filters) -----
     fetchBookings() {
-      this.error = null
       this.loading = true
-
-      const params = []
-      const f = this.filters
-      if (f.activityId && f.activityId.trim())
-        params.push('activityId=' + encodeURIComponent(f.activityId.trim()))
-      if (f.sportCenterId && f.sportCenterId.trim())
-        params.push('sportCenterId=' + encodeURIComponent(f.sportCenterId.trim()))
-      if (f.bookingStatus)
-        params.push('bookingStatus=' + encodeURIComponent(f.bookingStatus))
-
-      const url = BOOKING_BASE + '/api/bookings' + (params.length ? '?' + params.join('&') : '')
-      this.lastUrl = url
-      this.lastMethod = 'GET'
-
-      fetch(url)
-        .then(this._handleResponse)
+      this.error = null
+      bookingApi.list({
+        activityId: this.filters.activityId,
+        sportCenterId: this.filters.sportCenterId,
+        bookingStatus: this.filters.bookingStatus
+      })
         .then(data => {
-          this.bookings = Array.isArray(data) ? data : [data]
+          this.bookings = Array.isArray(data) ? data : []
         })
         .catch(err => {
-          this.error = err.message
+          if (!err.silent) this.error = err.message
           console.error(err)
         })
         .finally(() => {
           this.loading = false
         })
     },
-
-    // ----- GET /api/bookings/{id} -----
-    lookupById() {
-      if (!this.lookupId || !this.lookupId.trim()) return
-      this.error = null
-      this.loading = true
-
-      const url = BOOKING_BASE + '/api/bookings/' + encodeURIComponent(this.lookupId.trim())
-      this.lastUrl = url
-      this.lastMethod = 'GET'
-
-      fetch(url)
-        .then(this._handleResponse)
-        .then(data => {
-          this.bookings = [data]
-        })
-        .catch(err => {
-          this.bookings = []
-          this.error = err.message
-        })
-        .finally(() => {
-          this.loading = false
-        })
-    },
-
-    // ----- PUT /api/bookings/{id}/confirm -----
-    confirmBooking(b) {
-      this._doAction(b, 'PUT', '/api/bookings/' + b.bookingId + '/confirm', 'Confirmed')
-    },
-
-    // ----- PUT /api/bookings/{id}/cancel -----
-    cancelBooking(b) {
-      this._doAction(b, 'PUT', '/api/bookings/' + b.bookingId + '/cancel', 'Cancelled')
-    },
-
-    // ----- POST /api/bookings/{id}/refund -----
-    refundBooking(b) {
-      this._doAction(b, 'POST', '/api/bookings/' + b.bookingId + '/refund', 'Refunded')
-    },
-
-    _doAction(b, method, path, successLabel) {
-      this.busy = { ...this.busy, [b.bookingId]: true }
-      this.actionMessages = { ...this.actionMessages, [b.bookingId]: '' }
-      this.actionStatus = { ...this.actionStatus, [b.bookingId]: '' }
-
-      const url = BOOKING_BASE + path
-      this.lastUrl = url
-      this.lastMethod = method
-
-      fetch(url, { method })
-        .then(this._handleResponse)
-        .then(data => {
-          // Replace booking in place with server response
-          const idx = this.bookings.findIndex(x => x.bookingId === b.bookingId)
-          if (idx !== -1) this.bookings.splice(idx, 1, data)
-          this.actionMessages = { ...this.actionMessages, [b.bookingId]: '✓ ' + successLabel }
-          this.actionStatus = { ...this.actionStatus, [b.bookingId]: 'ok' }
-        })
-        .catch(err => {
-          this.actionMessages = { ...this.actionMessages, [b.bookingId]: '✗ ' + err.message }
-          this.actionStatus = { ...this.actionStatus, [b.bookingId]: 'err' }
-        })
-        .finally(() => {
-          this.busy = { ...this.busy, [b.bookingId]: false }
-        })
-    },
-
-    // ----- helpers -----
-    canRefund(b) {
-      return b.bookingStatus === 'CANCELLED'
-          && b.payment
-          && b.payment.paymentStatus === 'PAID'
-    },
     clearFilters() {
       this.filters.activityId = ''
       this.filters.sportCenterId = ''
       this.filters.bookingStatus = ''
-      this.lookupId = ''
       this.fetchBookings()
     },
-    formatTime(iso) {
+    formatDate(iso) {
       if (!iso) return ''
-      const d = new Date(iso)
-      return d.toLocaleString('en-GB', {
-        day: '2-digit', month: 'short',
-        hour: '2-digit', minute: '2-digit'
+      return new Date(iso).toLocaleString('en-GB', {
+        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
       })
-    },
-    async _handleResponse(response) {
-      if (!response.ok) {
-        let msg
-        try {
-          const body = await response.json()
-          msg = body.message || body.error || ('HTTP ' + response.status)
-        } catch (e) {
-          msg = 'HTTP ' + response.status + ' ' + response.statusText
-        }
-        throw new Error(msg)
-      }
-      return response.json()
     }
   },
   mounted() {
@@ -282,7 +135,9 @@ export default {
 </script>
 
 <style scoped>
-.bookings { text-align: left; }
+.bookings {
+  text-align: left;
+}
 .filters {
   background: #f4f4f4;
   padding: 15px 20px;
@@ -308,11 +163,6 @@ export default {
   border-radius: 6px;
   font-size: 0.95em;
 }
-.hint {
-  color: #d68910;
-  font-size: 0.8em;
-  margin-top: 3px;
-}
 .actions {
   display: flex;
   gap: 8px;
@@ -328,15 +178,8 @@ button {
   cursor: pointer;
   font-size: 0.95em;
 }
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-button.secondary {
-  background: white;
-  color: #2c3e50;
-  border: 1px solid #ccc;
-}
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.secondary { background: white; color: #2c3e50; border: 1px solid #ccc; }
 .primary-link {
   background: #2c3e50;
   color: white;
@@ -345,31 +188,35 @@ button.secondary {
   text-decoration: none;
   font-size: 0.95em;
 }
-.last-url {
-  background: #eaf3ff;
-  border-left: 4px solid #3498db;
-  padding: 6px 12px;
-  border-radius: 0 6px 6px 0;
-  margin-bottom: 10px;
-  word-break: break-all;
+.count {
+  text-align: center;
+  color: #555;
 }
-.last-url code { font-family: monospace; font-size: 0.85em; }
-.count { text-align: center; color: #555; }
-
 .item {
-  background: #ecf3ee;
+  background: #eaf3ff;
   padding: 15px 20px;
   margin-bottom: 12px;
   border-radius: 10px;
-  border-left: 4px solid #42b983;
+  border-left: 4px solid #3498db;
 }
-.item-head {
+.item h3 {
+  margin: 0 0 8px;
+  color: #2c3e50;
+}
+.title-link {
+  color: #2c3e50;
+  text-decoration: none;
+}
+.title-link:hover {
+  color: #3498db;
+  text-decoration: underline;
+}
+.meta {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
+  gap: 12px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
 }
-.item-head h3 { margin: 0; color: #2c3e50; }
 .badge {
   padding: 3px 10px;
   border-radius: 12px;
@@ -380,57 +227,30 @@ button.secondary {
 .status-pending   { background: #f39c12; }
 .status-confirmed { background: #27ae60; }
 .status-cancelled { background: #e74c3c; }
-
-.meta {
-  display: flex;
-  gap: 14px;
-  flex-wrap: wrap;
-  font-size: 0.9em;
-  color: #34495e;
-  margin-bottom: 8px;
+.sport {
+  font-size: 0.95em;
 }
-.created { color: #777; }
-
-.payment {
-  background: #fff;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 0.9em;
-  margin-bottom: 10px;
+.payment-line, .created-line {
+  color: #555;
+  margin: 4px 0 0;
+  font-size: 0.95em;
 }
 .badge-small {
-  padding: 2px 8px;
+  padding: 2px 7px;
   border-radius: 10px;
-  color: white;
   font-size: 0.75em;
   font-weight: bold;
+  color: white;
+  margin: 0 6px;
 }
 .pay-pending  { background: #f39c12; }
 .pay-paid     { background: #27ae60; }
-.pay-refunded { background: #7f8c8d; }
-
-.row-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+.pay-refunded { background: #8e44ad; }
+.loading, .empty, .error {
+  text-align: center;
+  padding: 30px;
 }
-.action {
-  background: #3498db;
-  padding: 6px 14px;
-  font-size: 0.9em;
+.error {
+  color: #c0392b;
 }
-.action.danger { background: #e74c3c; }
-.action.warn   { background: #d35400; }
-
-.action-msg {
-  margin-top: 8px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 0.9em;
-}
-.action-msg.ok  { background: #d4efdf; color: #196f3d; }
-.action-msg.err { background: #fadbd8; color: #c0392b; }
-
-.loading, .empty, .error { text-align: center; padding: 30px; }
-.error { color: #c0392b; }
 </style>

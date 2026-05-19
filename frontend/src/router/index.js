@@ -32,6 +32,7 @@ import ResolveSlots from '../views/scheduling/ResolveSlots.vue'
 import ActivitySuggestion from '../views/matching/ActivitySuggestion.vue'
 import CompatibilityCheck from '../views/matching/CompatibilityCheck.vue'
 import SuggestionManagement from '@/views/matching/SuggestionManagement.vue'
+import IndexEntity from '../views/search/IndexEntity.vue'
 
 
 const routes = [
@@ -189,7 +190,11 @@ const routes = [
     name: 'IndexEntry',
     component: IndexEntry
   },
-
+  {
+    path: '/search/index/new',
+    name: 'IndexEntity',
+    component: IndexEntity
+  },
   {
     path: '/bookings',
     name: 'AllBookings',
