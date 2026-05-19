@@ -18,6 +18,7 @@
         <router-link to="/ratings">User Ratings</router-link> |
         <router-link to="/admin/ratings">Admin Ratings</router-link> |
         <router-link to="/matching/users">User Suggestions</router-link> |
+        <router-link to="/matching/activities">Activity Suggestions</router-link> |
         <router-link to="/search/facilities">Facility Search</router-link>
         <router-link to="/search">All</router-link> |
         <router-link to="/search/users">Users</router-link> |

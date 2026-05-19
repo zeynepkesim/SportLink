@@ -21,6 +21,7 @@ import AdminRatings from '../views/ratings/AdminRatings.vue'
 import ActivityDetail from '../views/activities/ActivityDetail.vue'
 import UserAvailability from '../views/scheduling/UserAvailability.vue'
 import ResolveSlots from '../views/scheduling/ResolveSlots.vue'
+import ActivitySuggestion from '../views/matching/ActivitySuggestion.vue'
 
 const routes = [
   {
@@ -105,6 +106,11 @@ const routes = [
     path: '/matching/users',
     name: 'UserSuggestion',
     component: UserSuggestion
+  },
+  {
+    path: '/matching/activities',
+    name: 'ActivitySuggestion',
+    component: ActivitySuggestion
   },
   {
     path: '/admin/ratings',
