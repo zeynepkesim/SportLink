@@ -14,7 +14,7 @@ Microservices-based platform for sports matchmaking, activity organization, and 
 
 ## Quick Start
 
-Boot the whole stack (Kafka, both databases, both services) and the frontend:
+Boot the whole stack (Kafka, RabbitMQ, all ten services and their PostgreSQL databases) and the frontend:
 
 ```bash
 docker compose up -d --build
@@ -41,17 +41,19 @@ Demo accounts seeded automatically (`DatabaseInitializer`):
 ## Repository Layout
 
 ```
-sportlink-project/
+SportLink/
 ├── account-management-service/     # Zeynep — registration, login, profile management
 ├── activity-management-service/    # Kirill
 ├── booking-service/                # Olena
 ├── interaction-service/            # Muhammad
+├── matching-service/               # Kateryna
 ├── moderation-service/             # Zeynep — content moderation cases, account sanctions
 ├── notification-service/           # Muhammad
 ├── rating-management-service/      # Kateryna
 ├── scheduling-service/             # Kirill
+├── search-service/                 # Olena
 ├── frontend/                       # Shared Vue 3 SPA (team)
-├── docker-compose.yml              # Local dev orchestration (PostgreSQL + services)
+├── docker-compose.yml              # Local orchestration (Kafka, RabbitMQ, PostgreSQL + all services)
 ├── .gitlab-ci.yml                  # CI: per-service build jobs + SAST + secret detection
 └── README.md
 ```
@@ -109,7 +111,7 @@ On startup, `DatabaseInitializer` seeds the database with demo users and one dem
 docker compose up -d --build
 ```
 
-This starts:
+This starts the whole stack. For this service it includes:
 - PostgreSQL on `localhost:5434` (database `account_service_db`)
 - Account Management Service on `localhost:8081`
 
@@ -209,13 +211,13 @@ Sanctions are intentionally not seeded — they are created live during the demo
 
 ### Run with Docker
 
-The root `docker-compose.yml` orchestrates both services and their PostgreSQL databases:
+The root `docker-compose.yml` orchestrates the whole stack, including both of these services and their PostgreSQL databases:
 
 ```bash
 docker compose up -d --build
 ```
 
-This starts:
+For these two services it starts:
 - Account Management DB on `localhost:5434`, service on `localhost:8081`
 - Moderation DB on `localhost:5439`, service on `localhost:8090`
 
